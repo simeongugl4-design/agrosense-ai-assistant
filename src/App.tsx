@@ -8,6 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import CropAdvisor from "./pages/CropAdvisor";
 import DiseaseScanner from "./pages/DiseaseScanner";
 import AIAssistant from "./pages/AIAssistant";
+import Weather from "./pages/Weather";
+import Irrigation from "./pages/Irrigation";
+import Fertilizer from "./pages/Fertilizer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +27,9 @@ const App = () => (
           <Route path="/dashboard/crops" element={<CropAdvisor />} />
           <Route path="/dashboard/disease" element={<DiseaseScanner />} />
           <Route path="/dashboard/assistant" element={<AIAssistant />} />
+          <Route path="/dashboard/weather" element={<Weather />} />
+          <Route path="/dashboard/irrigation" element={<Irrigation />} />
+          <Route path="/dashboard/fertilizer" element={<Fertilizer />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
