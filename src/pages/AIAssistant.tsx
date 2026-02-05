@@ -3,7 +3,9 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Mic, Bot, User, Sparkles } from "lucide-react";
+import { Send, Mic, Bot, User, Sparkles, Loader2 } from "lucide-react";
+import { streamChat } from "@/lib/ai-service";
+import { toast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -14,9 +16,10 @@ interface Message {
 
 const suggestedQuestions = [
   "Why are my tomato leaves turning yellow?",
-  "What's the best time to plant rice?",
+  "What's the best time to plant rice in Punjab?",
   "How much water does wheat need daily?",
   "How to control aphids organically?",
+  "What fertilizer should I use for maize?",
 ];
 
 export default function AIAssistant() {
@@ -41,7 +44,7 @@ export default function AIAssistant() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -54,31 +57,53 @@ export default function AIAssistant() {
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    let assistantContent = "";
+    const assistantId = (Date.now() + 1).toString();
 
-    const responses: Record<string, string> = {
-      yellow: "Yellow leaves on tomato plants can indicate several issues:\n\n1. **Nitrogen deficiency** - The most common cause. Add nitrogen-rich fertilizer or compost.\n\n2. **Overwatering** - Check if soil is waterlogged. Allow soil to dry between watering.\n\n3. **Fungal disease** - Look for spots or patterns. Apply neem oil if needed.\n\n4. **Natural aging** - Lower leaves yellowing is normal as plant focuses energy on new growth.\n\nWould you like specific treatment recommendations?",
-      rice: "The best time to plant rice depends on your region:\n\n🌱 **Kharif Season (Main crop)**\n- Plant: June-July\n- Harvest: November-December\n\n🌾 **Rabi Season (Second crop)**\n- Plant: November-December\n- Harvest: March-April\n\nFor your region, I recommend starting nursery preparation 2-3 weeks before transplanting. Would you like a detailed rice planting calendar?",
-      water: "Wheat water requirements vary by growth stage:\n\n💧 **Germination**: Light irrigation every 2-3 days\n💧 **Tillering**: 60-80mm per irrigation\n💧 **Flowering**: Critical stage - 80-100mm\n💧 **Grain filling**: 60-80mm, reduce gradually\n\n**Total requirement**: 450-650mm for the full cycle.\n\nBased on your soil type, I recommend drip irrigation for 20% water savings.",
-      aphid: "Here are organic methods to control aphids:\n\n🌿 **Neem oil spray**\n- Mix 5ml neem oil + 1L water + few drops soap\n- Spray early morning or evening\n\n🐞 **Beneficial insects**\n- Encourage ladybugs and lacewings\n- Plant marigolds as companion plants\n\n🧄 **Garlic spray**\n- Blend 4-5 garlic cloves in 1L water\n- Strain and spray on affected areas\n\n💦 **Water spray**\n- Strong jet of water can dislodge aphids\n\nRepeat treatments every 3-4 days for best results!",
-    };
+    // Add empty assistant message that we'll update
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+      },
+    ]);
 
-    const responseKey = Object.keys(responses).find((key) =>
-      input.toLowerCase().includes(key)
-    );
-
-    const aiMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: responseKey
-        ? responses[responseKey]
-        : "That's a great question! Based on my agricultural knowledge, I'd recommend consulting with a local agricultural expert for region-specific advice. In the meantime, I can help you with crop recommendations, disease identification, or irrigation planning. What would you like to know more about?",
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, aiMessage]);
-    setIsTyping(false);
+    try {
+      await streamChat({
+        messages: messages
+          .filter((m) => m.id !== "1") // Skip initial greeting
+          .concat(userMessage)
+          .map((m) => ({ role: m.role, content: m.content })),
+        onDelta: (chunk) => {
+          assistantContent += chunk;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: assistantContent } : m
+            )
+          );
+        },
+        onDone: () => {
+          setIsTyping(false);
+        },
+        onError: (error) => {
+          console.error("AI error:", error);
+          toast({
+            variant: "destructive",
+            title: "AI Error",
+            description: error.message || "Failed to get response. Please try again.",
+          });
+          // Remove the empty assistant message on error
+          setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          setIsTyping(false);
+        },
+      });
+    } catch (error) {
+      console.error("Stream error:", error);
+      setIsTyping(false);
+    }
   };
 
   const handleSuggestion = (question: string) => {
@@ -116,9 +141,14 @@ export default function AIAssistant() {
                       : "bg-card border border-border rounded-tl-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {message.content}
-                  </p>
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed prose prose-sm max-w-none">
+                    {message.content || (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Thinking...
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {message.role === "user" && (
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -127,7 +157,7 @@ export default function AIAssistant() {
                 )}
               </div>
             ))}
-            {isTyping && (
+            {isTyping && messages[messages.length - 1]?.content === "" && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                   <Bot className="w-4 h-4 text-primary-foreground" />
@@ -145,7 +175,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Suggestions */}
-          {messages.length === 1 && (
+          {messages.length <= 2 && (
             <div className="mb-4">
               <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
                 <Sparkles className="w-4 h-4" />
@@ -176,10 +206,15 @@ export default function AIAssistant() {
               placeholder="Type your question here..."
               className="flex-1"
               onKeyPress={(e) => e.key === "Enter" && handleSend()}
+              disabled={isTyping}
             />
-            <Button onClick={handleSend} disabled={!input.trim()}>
-              <Send className="w-4 h-4 mr-2" />
-              Send
+            <Button onClick={handleSend} disabled={!input.trim() || isTyping}>
+              {isTyping ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              {isTyping ? "" : "Send"}
             </Button>
           </div>
         </main>
