@@ -43,10 +43,14 @@ export function Navbar() {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10">
+            <Button 
+              variant="ghost" 
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={() => navigate('/auth')}
+            >
               Sign In
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/dashboard')}>
+            <Button variant="secondary" onClick={() => navigate('/auth')}>
               Get Started
             </Button>
           </div>
@@ -75,10 +79,14 @@ export function Navbar() {
                 </a>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-primary-foreground/10">
-                <Button variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 justify-start">
+                <Button 
+                  variant="ghost" 
+                  className="text-primary-foreground hover:bg-primary-foreground/10 justify-start"
+                  onClick={() => navigate('/auth')}
+                >
                   Sign In
                 </Button>
-                <Button variant="secondary" onClick={() => navigate('/dashboard')}>
+                <Button variant="secondary" onClick={() => navigate('/auth')}>
                   Get Started
                 </Button>
               </div>

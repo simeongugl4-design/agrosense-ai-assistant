@@ -47,7 +47,7 @@ export function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 fade-in-up" style={{ animationDelay: '0.3s' }}>
-            <Button variant="hero" size="xl" onClick={() => navigate('/dashboard')}>
+            <Button variant="hero" size="xl" onClick={() => navigate('/auth')}>
               Start Growing Smarter
               <ArrowRight className="w-5 h-5" />
             </Button>

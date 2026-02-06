@@ -1,1 +1,10 @@
 project_id = "mugupoumszcsytttgxzu"
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.crop-advisor]
+verify_jwt = false
+
+[functions.disease-detection]
+verify_jwt = false

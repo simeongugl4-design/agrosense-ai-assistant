@@ -92,7 +92,7 @@ export default function DiseaseScanner() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <Header 
           title="Disease Scanner" 
           subtitle="Upload a photo or describe symptoms for AI-powered diagnosis" 
