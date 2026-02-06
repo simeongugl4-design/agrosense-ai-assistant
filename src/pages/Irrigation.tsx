@@ -50,7 +50,7 @@ export default function Irrigation() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <Header 
           title="Smart Irrigation" 
           subtitle="AI-optimized water management for your crops" 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { 
   Leaf, 
   LayoutDashboard, 
@@ -9,10 +10,15 @@ import {
   MessageCircle,
   Settings,
   HelpCircle,
-  LogOut
+  LogOut,
+  Menu,
+  X,
+  Crown
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const mainNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -30,13 +36,21 @@ const bottomNavItems = [
 ];
 
 export function Sidebar() {
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
 
-  return (
-    <aside className="w-64 bg-sidebar h-screen flex flex-col fixed left-0 top-0 z-40">
+  const handleSignOut = async () => {
+    await signOut();
+    toast({ title: "Signed out successfully" });
+    navigate("/");
+  };
+
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div 
-        className="h-16 flex items-center gap-2 px-6 border-b border-sidebar-border cursor-pointer"
+        className="h-16 flex items-center gap-2 px-6 border-b border-sidebar-border cursor-pointer flex-shrink-0"
         onClick={() => navigate('/')}
       >
         <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
@@ -47,14 +61,27 @@ export function Sidebar() {
         </span>
       </div>
 
+      {/* User Info */}
+      {user && (
+        <div className="px-4 py-3 border-b border-sidebar-border">
+          <p className="text-sm text-sidebar-foreground truncate">{user.email}</p>
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-sidebar-foreground/50 px-2 py-0.5 bg-sidebar-accent rounded-full">
+              Free Plan
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main Navigation */}
-      <nav className="flex-1 py-6 px-3 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 overflow-y-auto">
         <div className="space-y-1">
           {mainNavItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               end={item.path === "/dashboard"}
+              onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
@@ -69,15 +96,31 @@ export function Sidebar() {
             </NavLink>
           ))}
         </div>
+
+        {/* Premium CTA */}
+        <div className="mt-6 mx-1 p-4 rounded-xl bg-sidebar-primary/20 border border-sidebar-primary/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Crown className="w-4 h-4 text-sidebar-primary" />
+            <span className="text-sm font-semibold text-sidebar-foreground">Go Premium</span>
+          </div>
+          <p className="text-xs text-sidebar-foreground/60 mb-3">
+            Unlock disease detection, market prediction & expert chat
+          </p>
+          <p className="text-sm font-bold text-sidebar-primary mb-2">₹99/month</p>
+          <button className="w-full py-2 px-3 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold hover:bg-sidebar-primary/90 transition-colors">
+            Upgrade Now
+          </button>
+        </div>
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="py-4 px-3 border-t border-sidebar-border">
+      <div className="py-4 px-3 border-t border-sidebar-border flex-shrink-0">
         <div className="space-y-1">
           {bottomNavItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
@@ -91,12 +134,52 @@ export function Sidebar() {
               {item.label}
             </NavLink>
           ))}
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200">
+          <button 
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200"
+          >
             <LogOut className="w-5 h-5" />
             Sign Out
           </button>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile hamburger */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground shadow-lg"
+        aria-label="Open menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 bg-sidebar h-screen flex-col fixed left-0 top-0 z-40">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsOpen(false)}
+          />
+          <aside className="absolute left-0 top-0 w-72 bg-sidebar h-full flex flex-col shadow-xl">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Mic, Bot, User, Sparkles, Loader2 } from "lucide-react";
+import { Send, Mic, MicOff, Bot, User, Sparkles, Loader2 } from "lucide-react";
 import { streamChat } from "@/lib/ai-service";
 import { toast } from "@/hooks/use-toast";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
@@ -27,13 +29,20 @@ export default function AIAssistant() {
     {
       id: "1",
       role: "assistant",
-      content: "Namaste! 🙏 I'm your AI farming assistant. Ask me anything about crops, diseases, irrigation, or farming practices. I can help you in your local language too!",
+      content: "Namaste! 🙏 I'm your AI farming assistant. Ask me anything about crops, diseases, irrigation, or farming practices. I can help you in your local language too!\n\n🎙️ **Tip**: Tap the microphone button to speak your question instead of typing!",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { isListening, isSupported, toggleListening, interimTranscript } = useVoiceInput({
+    language: "en-IN",
+    onResult: (transcript) => {
+      setInput(transcript);
+    },
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,13 +52,14 @@ export default function AIAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isTyping) return;
+  const handleSend = useCallback(async (textToSend?: string) => {
+    const messageText = textToSend || input.trim();
+    if (!messageText || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: messageText,
       timestamp: new Date(),
     };
 
@@ -60,7 +70,6 @@ export default function AIAssistant() {
     let assistantContent = "";
     const assistantId = (Date.now() + 1).toString();
 
-    // Add empty assistant message that we'll update
     setMessages((prev) => [
       ...prev,
       {
@@ -74,7 +83,7 @@ export default function AIAssistant() {
     try {
       await streamChat({
         messages: messages
-          .filter((m) => m.id !== "1") // Skip initial greeting
+          .filter((m) => m.id !== "1")
           .concat(userMessage)
           .map((m) => ({ role: m.role, content: m.content })),
         onDelta: (chunk) => {
@@ -95,7 +104,6 @@ export default function AIAssistant() {
             title: "AI Error",
             description: error.message || "Failed to get response. Please try again.",
           });
-          // Remove the empty assistant message on error
           setMessages((prev) => prev.filter((m) => m.id !== assistantId));
           setIsTyping(false);
         },
@@ -104,7 +112,7 @@ export default function AIAssistant() {
       console.error("Stream error:", error);
       setIsTyping(false);
     }
-  };
+  }, [input, isTyping, messages]);
 
   const handleSuggestion = (question: string) => {
     setInput(question);
@@ -113,19 +121,19 @@ export default function AIAssistant() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64 h-screen flex flex-col">
+      <div className="lg:ml-64 h-screen flex flex-col">
         <Header 
           title="AI Farming Assistant" 
           subtitle="Ask questions in any language - I'm here to help!" 
         />
         
-        <main className="flex-1 flex flex-col p-6 overflow-hidden">
+        <main className="flex-1 flex flex-col p-4 lg:p-6 overflow-hidden">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto mb-4 space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${
+                className={`flex gap-2 lg:gap-3 ${
                   message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
@@ -135,20 +143,34 @@ export default function AIAssistant() {
                   </div>
                 )}
                 <div
-                  className={`max-w-2xl p-4 rounded-2xl ${
+                  className={`max-w-[85%] lg:max-w-2xl p-3 lg:p-4 rounded-2xl ${
                     message.role === "user"
                       ? "bg-primary text-primary-foreground rounded-tr-sm"
                       : "bg-card border border-border rounded-tl-sm"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed prose prose-sm max-w-none">
-                    {message.content || (
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Thinking...
-                      </span>
-                    )}
-                  </div>
+                  {message.content ? (
+                    <div className="prose prose-sm max-w-none text-sm leading-relaxed">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
+                          li: ({ children }) => <li className="mb-1">{children}</li>,
+                          h3: ({ children }) => <h3 className="font-semibold text-base mb-1 mt-2">{children}</h3>,
+                          h4: ({ children }) => <h4 className="font-semibold mb-1 mt-2">{children}</h4>,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Thinking...
+                    </span>
+                  )}
                 </div>
                 {message.role === "user" && (
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -157,22 +179,15 @@ export default function AIAssistant() {
                 )}
               </div>
             ))}
-            {isTyping && messages[messages.length - 1]?.content === "" && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-primary-foreground" />
-                </div>
-                <div className="bg-card border border-border rounded-2xl rounded-tl-sm p-4">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
-                    <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                  </div>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Voice interim transcript */}
+          {isListening && interimTranscript && (
+            <div className="mb-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/30 text-sm text-foreground animate-pulse">
+              🎙️ {interimTranscript}...
+            </div>
+          )}
 
           {/* Suggestions */}
           {messages.length <= 2 && (
@@ -186,7 +201,7 @@ export default function AIAssistant() {
                   <button
                     key={question}
                     onClick={() => handleSuggestion(question)}
-                    className="px-4 py-2 bg-card border border-border rounded-full text-sm text-foreground hover:border-primary/50 hover:bg-primary/5 transition-all"
+                    className="px-3 lg:px-4 py-2 bg-card border border-border rounded-full text-xs lg:text-sm text-foreground hover:border-primary/50 hover:bg-primary/5 transition-all"
                   >
                     {question}
                   </button>
@@ -196,25 +211,32 @@ export default function AIAssistant() {
           )}
 
           {/* Input */}
-          <div className="flex gap-3">
-            <Button variant="outline" size="icon" className="flex-shrink-0">
-              <Mic className="w-5 h-5" />
-            </Button>
+          <div className="flex gap-2 lg:gap-3">
+            {isSupported && (
+              <Button 
+                variant={isListening ? "destructive" : "outline"} 
+                size="icon" 
+                className={`flex-shrink-0 ${isListening ? "animate-pulse" : ""}`}
+                onClick={toggleListening}
+                title={isListening ? "Stop listening" : "Start voice input"}
+              >
+                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </Button>
+            )}
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your question here..."
+              placeholder={isListening ? "Listening... speak now 🎙️" : "Type your question here..."}
               className="flex-1"
               onKeyPress={(e) => e.key === "Enter" && handleSend()}
               disabled={isTyping}
             />
-            <Button onClick={handleSend} disabled={!input.trim() || isTyping}>
+            <Button onClick={() => handleSend()} disabled={!input.trim() || isTyping}>
               {isTyping ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Send className="w-4 h-4 mr-2" />
+                <Send className="w-4 h-4" />
               )}
-              {isTyping ? "" : "Send"}
             </Button>
           </div>
         </main>

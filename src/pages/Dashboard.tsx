@@ -29,7 +29,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <Header title="Dashboard" subtitle="Welcome back! Here's your farm overview." />
         
         <main className="p-6">

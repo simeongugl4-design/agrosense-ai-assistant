@@ -86,7 +86,7 @@ export default function Fertilizer() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <Header 
           title="Fertilizer Planner" 
           subtitle="AI-optimized nutrient management for maximum yield" 

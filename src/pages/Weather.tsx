@@ -66,7 +66,7 @@ export default function Weather() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="ml-64">
+      <div className="lg:ml-64">
         <Header 
           title="Weather Intelligence" 
           subtitle="AI-powered weather insights for smarter farming decisions" 
