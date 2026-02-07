@@ -13,7 +13,9 @@ import {
   LogOut,
   Menu,
   X,
-  Crown
+  Crown,
+  Calendar,
+  ShoppingCart,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,8 @@ const mainNavItems = [
   { icon: Camera, label: "Disease Scanner", path: "/dashboard/disease" },
   { icon: Droplets, label: "Irrigation", path: "/dashboard/irrigation" },
   { icon: FlaskConical, label: "Fertilizer", path: "/dashboard/fertilizer" },
+  { icon: Calendar, label: "Farm Calendar", path: "/dashboard/calendar" },
+  { icon: ShoppingCart, label: "Marketplace", path: "/dashboard/marketplace" },
   { icon: MessageCircle, label: "AI Assistant", path: "/dashboard/assistant" },
 ];
 
