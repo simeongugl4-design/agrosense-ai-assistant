@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      farm_events: {
+        Row: {
+          created_at: string
+          crop: string | null
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          is_completed: boolean
+          plot_name: string | null
+          priority: string
+          reminder_date: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crop?: string | null
+          description?: string | null
+          event_date: string
+          event_type?: string
+          id?: string
+          is_completed?: boolean
+          plot_name?: string | null
+          priority?: string
+          reminder_date?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crop?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          is_completed?: boolean
+          plot_name?: string | null
+          priority?: string
+          reminder_date?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      marketplace_listings: {
+        Row: {
+          contact_phone: string | null
+          created_at: string
+          crop_type: string
+          description: string | null
+          id: string
+          image_url: string | null
+          listing_type: string
+          location: string | null
+          price_per_unit: number
+          quantity: number
+          status: string
+          title: string
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_phone?: string | null
+          created_at?: string
+          crop_type: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          listing_type?: string
+          location?: string | null
+          price_per_unit: number
+          quantity: number
+          status?: string
+          title: string
+          unit?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_phone?: string | null
+          created_at?: string
+          crop_type?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          listing_type?: string
+          location?: string | null
+          price_per_unit?: number
+          quantity?: number
+          status?: string
+          title?: string
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
