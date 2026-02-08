@@ -5,7 +5,7 @@ interface Message {
   content: string;
 }
 
-interface CropRecommendation {
+export interface CropRecommendation {
   crop: string;
   yieldEstimate: string;
   profit: string;
@@ -17,7 +17,7 @@ interface CropRecommendation {
   harvestTime: string;
 }
 
-interface DiseaseAnalysis {
+export interface DiseaseAnalysis {
   disease: string;
   confidence: number;
   severity: string;
@@ -31,6 +31,101 @@ interface DiseaseAnalysis {
   expertNeeded: boolean;
   expertReason: string;
   possibleAlternatives?: string[];
+}
+
+export interface WeatherData {
+  location: string;
+  coordinates: { latitude: number; longitude: number };
+  current: {
+    temp: number;
+    humidity: number;
+    windSpeed: number;
+    feelsLike: number;
+    uvIndex: number;
+    rainfall: number;
+    condition: string;
+    weatherCode: number;
+  };
+  forecast: Array<{
+    day: string;
+    date: string;
+    high: number;
+    low: number;
+    rainChance: number;
+    precipitation: number;
+    windSpeed: number;
+    uvIndex: number;
+    condition: string;
+    weatherCode: number;
+  }>;
+  farmingAlerts: Array<{
+    type: "warning" | "info" | "success";
+    title: string;
+    message: string;
+  }>;
+  farmingTips: Array<{
+    activity: string;
+    recommendation: string;
+    status: "urgent" | "pause" | "wait" | "good";
+  }>;
+}
+
+export interface FertilizerPlan {
+  nutrientLevels: Record<string, {
+    current: number;
+    optimal: number;
+    status: string;
+    action: string;
+  }>;
+  recommendations: Array<{
+    nutrient: string;
+    product: string;
+    quantity: string;
+    timing: string;
+    method: string;
+    cost: string;
+    priority: string;
+  }>;
+  schedule: Array<{
+    week: string;
+    action: string;
+    status: string;
+  }>;
+  totalCostPerHectare: number;
+  expectedYieldBoost: string;
+  organicAlternatives: Array<{
+    name: string;
+    benefit: string;
+    application: string;
+  }>;
+  warnings: string[];
+}
+
+export interface IrrigationPlan {
+  dailyWaterNeed: number;
+  dailyWaterUnit: string;
+  optimalRange: string;
+  soilMoistureTarget: { min: number; max: number; current: number };
+  stats: {
+    todayUsage: { value: number; unit: string; changePercent: number };
+    weeklySavings: { value: number; unit: string; costSaved: number };
+    efficiency: { value: number; label: string };
+  };
+  schedule: Array<{
+    day: string;
+    time: string;
+    duration: string;
+    status: string;
+    waterAmount: number;
+    notes?: string;
+  }>;
+  weatherAlerts: Array<{
+    title: string;
+    message: string;
+    type: string;
+  }>;
+  tips: string[];
+  method: string;
 }
 
 // Streaming chat with AI assistant
@@ -96,7 +191,6 @@ export async function streamChat({
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) onDelta(content);
         } catch {
-          // Incomplete JSON, put back and wait
           buffer = line + "\n" + buffer;
           break;
         }
@@ -129,7 +223,7 @@ export async function getCropRecommendations(params: {
   return data;
 }
 
-// Analyze crop disease from image or symptoms
+// Analyze crop disease
 export async function analyzeCropDisease(params: {
   imageBase64?: string;
   cropType?: string;
@@ -142,6 +236,72 @@ export async function analyzeCropDisease(params: {
   if (error) {
     console.error("Disease detection error:", error);
     throw new Error(error.message || "Failed to analyze disease");
+  }
+
+  return data;
+}
+
+// Get real weather data
+export async function getWeatherData(location: string): Promise<WeatherData> {
+  const { data, error } = await supabase.functions.invoke("weather-data", {
+    body: { location },
+  });
+
+  if (error) {
+    console.error("Weather data error:", error);
+    throw new Error(error.message || "Failed to fetch weather data");
+  }
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+}
+
+// Get AI fertilizer recommendations
+export async function getFertilizerPlan(params: {
+  cropType: string;
+  growthStage: string;
+  soilType?: string;
+  fieldSize?: string;
+  location?: string;
+}): Promise<FertilizerPlan> {
+  const { data, error } = await supabase.functions.invoke("fertilizer-advisor", {
+    body: params,
+  });
+
+  if (error) {
+    console.error("Fertilizer advisor error:", error);
+    throw new Error(error.message || "Failed to get fertilizer plan");
+  }
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+}
+
+// Get AI irrigation plan
+export async function getIrrigationPlan(params: {
+  cropType: string;
+  growthStage: string;
+  fieldSize?: string;
+  soilType?: string;
+  location?: string;
+}): Promise<IrrigationPlan> {
+  const { data, error } = await supabase.functions.invoke("irrigation-advisor", {
+    body: params,
+  });
+
+  if (error) {
+    console.error("Irrigation advisor error:", error);
+    throw new Error(error.message || "Failed to get irrigation plan");
+  }
+
+  if (data.error) {
+    throw new Error(data.error);
   }
 
   return data;

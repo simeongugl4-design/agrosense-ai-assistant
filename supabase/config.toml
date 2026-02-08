@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.disease-detection]
 verify_jwt = false
+
+[functions.weather-data]
+verify_jwt = false
+
+[functions.fertilizer-advisor]
+verify_jwt = false
+
+[functions.irrigation-advisor]
+verify_jwt = false

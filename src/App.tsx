@@ -16,6 +16,7 @@ import Irrigation from "./pages/Irrigation";
 import Fertilizer from "./pages/Fertilizer";
 import FarmCalendar from "./pages/FarmCalendar";
 import Marketplace from "./pages/Marketplace";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/dashboard/fertilizer" element={<ProtectedRoute><Fertilizer /></ProtectedRoute>} />
             <Route path="/dashboard/calendar" element={<ProtectedRoute><FarmCalendar /></ProtectedRoute>} />
             <Route path="/dashboard/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
