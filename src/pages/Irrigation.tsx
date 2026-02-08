@@ -9,8 +9,10 @@ import {
   CheckCircle,
   Clock,
   Waves,
-  Sun,
-  Cloud
+  Cloud,
+  Loader2,
+  Sparkles,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,29 +25,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { getIrrigationPlan } from "@/lib/ai-service";
+import type { IrrigationPlan } from "@/lib/ai-service";
+import { toast } from "@/hooks/use-toast";
 
-const cropWaterNeeds = {
-  rice: { daily: 8, stage: "Flowering", optimal: "6-10 mm/day" },
-  wheat: { daily: 4, stage: "Grain filling", optimal: "3-5 mm/day" },
-  maize: { daily: 5, stage: "Vegetative", optimal: "4-6 mm/day" },
-  cotton: { daily: 6, stage: "Boll development", optimal: "5-7 mm/day" },
-  sugarcane: { daily: 7, stage: "Grand growth", optimal: "6-8 mm/day" },
-};
-
-const irrigationSchedule = [
-  { day: "Today", time: "6:00 AM", duration: "45 min", status: "completed", waterUsed: 120 },
-  { day: "Today", time: "5:00 PM", duration: "30 min", status: "upcoming", waterUsed: 80 },
-  { day: "Tomorrow", time: "6:00 AM", duration: "45 min", status: "scheduled", waterUsed: 120 },
-  { day: "Wed", time: "Skip", duration: "-", status: "rain", waterUsed: 0 },
-  { day: "Thu", time: "Skip", duration: "-", status: "rain", waterUsed: 0 },
-];
+const cropOptions = ["Rice", "Wheat", "Maize", "Cotton", "Sugarcane", "Soybean", "Potato", "Tomato", "Onion", "Groundnut"];
+const stageOptions = ["Seedling", "Vegetative", "Flowering", "Fruiting/Grain filling", "Maturity"];
 
 export default function Irrigation() {
-  const [selectedCrop, setSelectedCrop] = useState("rice");
+  const [cropType, setCropType] = useState("");
+  const [growthStage, setGrowthStage] = useState("");
   const [fieldSize, setFieldSize] = useState("5");
-  
-  const currentCrop = cropWaterNeeds[selectedCrop as keyof typeof cropWaterNeeds];
-  const dailyWaterNeed = currentCrop.daily * parseFloat(fieldSize || "1") * 10; // liters per day
+  const [soilType, setSoilType] = useState("");
+  const [location, setLocation] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [plan, setPlan] = useState<IrrigationPlan | null>(null);
+
+  const handleGetPlan = async () => {
+    if (!cropType || !growthStage) {
+      toast({ variant: "destructive", title: "Please select crop type and growth stage" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const data = await getIrrigationPlan({
+        cropType, growthStage, fieldSize, soilType, location,
+      });
+      setPlan(data);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to get irrigation plan",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,198 +72,240 @@ export default function Irrigation() {
           subtitle="AI-optimized water management for your crops" 
         />
         
-        <main className="p-6">
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-card rounded-xl border border-border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Today's Usage</p>
-                  <p className="text-2xl font-bold text-foreground">1,240 L</p>
-                  <p className="text-sm text-success">-8% from yesterday</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <Droplets className="w-6 h-6 text-accent" />
-                </div>
+        <main className="p-4 lg:p-6">
+          {/* Input Form */}
+          <div className="bg-card rounded-xl border border-border p-5 lg:p-6 mb-6 lg:mb-8">
+            <h3 className="text-lg font-semibold text-foreground mb-5 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Generate Your Irrigation Plan
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <Label>Crop Type *</Label>
+                <Select value={cropType} onValueChange={setCropType}>
+                  <SelectTrigger><SelectValue placeholder="Select crop" /></SelectTrigger>
+                  <SelectContent>
+                    {cropOptions.map(c => <SelectItem key={c} value={c.toLowerCase()}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Growth Stage *</Label>
+                <Select value={growthStage} onValueChange={setGrowthStage}>
+                  <SelectTrigger><SelectValue placeholder="Select stage" /></SelectTrigger>
+                  <SelectContent>
+                    {stageOptions.map(s => <SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Field Size (ha)</Label>
+                <Input type="number" value={fieldSize} onChange={(e) => setFieldSize(e.target.value)} placeholder="5" />
+              </div>
+              <div className="space-y-2">
+                <Label>Soil Type</Label>
+                <Select value={soilType} onValueChange={setSoilType}>
+                  <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+                  <SelectContent>
+                    {["Clay", "Sandy", "Loamy", "Silty", "Black Soil", "Red Soil", "Alluvial"].map(s => 
+                      <SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Punjab" />
               </div>
             </div>
-
-            <div className="bg-card rounded-xl border border-border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Weekly Savings</p>
-                  <p className="text-2xl font-bold text-success">2,450 L</p>
-                  <p className="text-sm text-muted-foreground">₹180 saved</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                  <TrendingDown className="w-6 h-6 text-success" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Soil Moisture</p>
-                  <p className="text-2xl font-bold text-foreground">68%</p>
-                  <p className="text-sm text-success">Optimal level</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Waves className="w-6 h-6 text-primary" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Next Irrigation</p>
-                  <p className="text-2xl font-bold text-foreground">5:00 PM</p>
-                  <p className="text-sm text-muted-foreground">In 3 hours</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-warning" />
-                </div>
-              </div>
-            </div>
+            <Button className="mt-5" size="lg" onClick={handleGetPlan} disabled={isLoading || !cropType || !growthStage}>
+              {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating Plan...</> : <><Sparkles className="w-4 h-4 mr-2" />Get AI Irrigation Plan</>}
+            </Button>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Water Needs Calculator */}
-            <div className="lg:col-span-1 bg-card rounded-xl border border-border p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-                <Droplets className="w-5 h-5 text-accent" />
-                Water Needs Calculator
-              </h3>
-
-              <div className="space-y-4 mb-6">
-                <div className="space-y-2">
-                  <Label>Crop Type</Label>
-                  <Select value={selectedCrop} onValueChange={setSelectedCrop}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="rice">Rice</SelectItem>
-                      <SelectItem value="wheat">Wheat</SelectItem>
-                      <SelectItem value="maize">Maize</SelectItem>
-                      <SelectItem value="cotton">Cotton</SelectItem>
-                      <SelectItem value="sugarcane">Sugarcane</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Field Size (hectares)</Label>
-                  <Input 
-                    type="number" 
-                    value={fieldSize} 
-                    onChange={(e) => setFieldSize(e.target.value)}
-                    placeholder="e.g., 5"
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-accent/10 border border-accent/30 mb-4">
-                <p className="text-sm text-muted-foreground mb-1">Daily Water Requirement</p>
-                <p className="text-3xl font-bold text-accent">{dailyWaterNeed.toLocaleString()} L</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Growth stage: {currentCrop.stage}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Optimal: {currentCrop.optimal}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Soil moisture</span>
-                  <span className="font-medium text-foreground">68%</span>
-                </div>
-                <Progress value={68} className="h-2" />
-                <p className="text-xs text-muted-foreground">
-                  Recommended: 60-75% for {selectedCrop}
-                </p>
-              </div>
-
-              <Button className="w-full mt-6">
-                Get Personalized Schedule
-              </Button>
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+              <p className="text-foreground font-medium">Analyzing weather & crop data...</p>
+              <p className="text-sm text-muted-foreground">Creating your personalized irrigation schedule</p>
             </div>
+          )}
 
-            {/* Irrigation Schedule */}
-            <div className="lg:col-span-2 bg-card rounded-xl border border-border p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary" />
-                Smart Irrigation Schedule
-              </h3>
+          {/* Empty State */}
+          {!isLoading && !plan && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Droplets className="w-16 h-16 text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground">Select your crop and growth stage to get an AI-powered irrigation schedule</p>
+            </div>
+          )}
 
-              <div className="space-y-3">
-                {irrigationSchedule.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-4 rounded-xl border ${
-                      item.status === "completed"
-                        ? "bg-success/5 border-success/30"
-                        : item.status === "upcoming"
-                        ? "bg-warning/5 border-warning/30"
-                        : item.status === "rain"
-                        ? "bg-accent/5 border-accent/30"
-                        : "bg-muted/50 border-border"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      {item.status === "completed" ? (
-                        <CheckCircle className="w-5 h-5 text-success" />
-                      ) : item.status === "upcoming" ? (
-                        <AlertCircle className="w-5 h-5 text-warning" />
-                      ) : item.status === "rain" ? (
-                        <Cloud className="w-5 h-5 text-accent" />
-                      ) : (
-                        <Clock className="w-5 h-5 text-muted-foreground" />
-                      )}
-                      <div>
-                        <p className="font-medium text-foreground">{item.day}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.status === "rain" ? "Rain expected - skip irrigation" : `${item.time} • ${item.duration}`}
-                        </p>
+          {/* Results */}
+          {!isLoading && plan && (
+            <>
+              {/* Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card rounded-xl border border-border p-4 lg:p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Daily Need</p>
+                      <p className="text-xl lg:text-2xl font-bold text-foreground">{plan.dailyWaterNeed} {plan.dailyWaterUnit?.split("/")[0] || "L"}</p>
+                      <p className="text-xs text-muted-foreground">per hectare</p>
+                    </div>
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Droplets className="w-5 h-5 lg:w-6 lg:h-6 text-accent" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 lg:p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Weekly Savings</p>
+                      <p className="text-xl lg:text-2xl font-bold text-success">{plan.stats?.weeklySavings?.value || 0} {plan.stats?.weeklySavings?.unit || "L"}</p>
+                      <p className="text-xs text-muted-foreground">₹{plan.stats?.weeklySavings?.costSaved || 0} saved</p>
+                    </div>
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                      <TrendingDown className="w-5 h-5 lg:w-6 lg:h-6 text-success" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 lg:p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Soil Moisture</p>
+                      <p className="text-xl lg:text-2xl font-bold text-foreground">{plan.soilMoistureTarget?.current || 65}%</p>
+                      <p className="text-xs text-success">Target: {plan.soilMoistureTarget?.min}-{plan.soilMoistureTarget?.max}%</p>
+                    </div>
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Waves className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4 lg:p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Efficiency</p>
+                      <p className="text-xl lg:text-2xl font-bold text-foreground">{plan.stats?.efficiency?.value || 80}%</p>
+                      <p className="text-xs text-muted-foreground">{plan.stats?.efficiency?.label || "Good"}</p>
+                    </div>
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-warning/10 flex items-center justify-center">
+                      <Clock className="w-5 h-5 lg:w-6 lg:h-6 text-warning" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Moisture + Method */}
+                <div className="lg:col-span-1 space-y-4">
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <h3 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <Waves className="w-5 h-5 text-accent" />
+                      Soil Moisture
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Current level</span>
+                        <span className="font-medium text-foreground">{plan.soilMoistureTarget?.current || 65}%</span>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      {item.status !== "rain" && (
-                        <>
-                          <p className="font-medium text-foreground">{item.waterUsed} L</p>
-                          <p className="text-xs text-muted-foreground">water usage</p>
-                        </>
-                      )}
-                      {item.status === "rain" && (
-                        <span className="text-sm text-success font-medium">Saving water!</span>
-                      )}
+                      <Progress value={plan.soilMoistureTarget?.current || 65} className="h-3" />
+                      <p className="text-xs text-muted-foreground">
+                        Optimal: {plan.soilMoistureTarget?.min || 60}-{plan.soilMoistureTarget?.max || 75}% for {cropType}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  
+                  {plan.method && (
+                    <div className="bg-card rounded-xl border border-border p-5">
+                      <h3 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Lightbulb className="w-5 h-5 text-secondary" />
+                        Recommended Method
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{plan.method}</p>
+                    </div>
+                  )}
 
-              {/* Weather-based Alert */}
-              <div className="mt-6 p-4 rounded-xl bg-accent/10 border border-accent/30">
-                <div className="flex items-start gap-3">
-                  <Cloud className="w-5 h-5 text-accent mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-foreground">Weather-Smart Scheduling</h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Rain is expected on Wednesday and Thursday. Your irrigation schedule has been automatically 
-                      adjusted to save water and prevent overwatering. This will save you approximately ₹120 this week.
-                    </p>
+                  {plan.tips && plan.tips.length > 0 && (
+                    <div className="bg-card rounded-xl border border-border p-5">
+                      <h3 className="text-base font-semibold text-foreground mb-3">💡 Pro Tips</h3>
+                      <ul className="space-y-2">
+                        {plan.tips.map((tip, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="text-success mt-0.5">•</span>
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Schedule */}
+                <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5">
+                  <h3 className="text-lg font-semibold text-foreground mb-5 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    Smart Irrigation Schedule
+                  </h3>
+                  <div className="space-y-3">
+                    {plan.schedule?.map((item, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border ${
+                          item.status === "completed"
+                            ? "bg-success/5 border-success/30"
+                            : item.status === "upcoming"
+                            ? "bg-warning/5 border-warning/30"
+                            : item.status === "rain"
+                            ? "bg-accent/5 border-accent/30"
+                            : "bg-muted/50 border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 lg:gap-4">
+                          {item.status === "completed" ? (
+                            <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
+                          ) : item.status === "upcoming" ? (
+                            <AlertCircle className="w-5 h-5 text-warning flex-shrink-0" />
+                          ) : item.status === "rain" ? (
+                            <Cloud className="w-5 h-5 text-accent flex-shrink-0" />
+                          ) : (
+                            <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                          )}
+                          <div>
+                            <p className="font-medium text-foreground text-sm">{item.day}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.status === "rain" ? (item.notes || "Rain expected - skip irrigation") : `${item.time} • ${item.duration}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {item.status !== "rain" ? (
+                            <>
+                              <p className="font-medium text-foreground text-sm">{item.waterAmount} L</p>
+                              <p className="text-xs text-muted-foreground">water usage</p>
+                            </>
+                          ) : (
+                            <span className="text-xs text-success font-medium">Saving water!</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
+
+                  {/* Weather Alerts */}
+                  {plan.weatherAlerts && plan.weatherAlerts.length > 0 && (
+                    <div className="mt-5 space-y-3">
+                      {plan.weatherAlerts.map((alert, i) => (
+                        <div key={i} className="p-3 lg:p-4 rounded-xl bg-accent/10 border border-accent/30">
+                          <h4 className="font-medium text-foreground text-sm">{alert.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-1">{alert.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="flex gap-4 mt-6">
-                <Button className="flex-1">Start Manual Irrigation</Button>
-                <Button variant="outline" className="flex-1">Edit Schedule</Button>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </main>
       </div>
     </div>
