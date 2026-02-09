@@ -31,16 +31,16 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/crops" element={<ProtectedRoute><CropAdvisor /></ProtectedRoute>} />
-            <Route path="/dashboard/disease" element={<ProtectedRoute><DiseaseScanner /></ProtectedRoute>} />
-            <Route path="/dashboard/assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
-            <Route path="/dashboard/weather" element={<ProtectedRoute><Weather /></ProtectedRoute>} />
-            <Route path="/dashboard/irrigation" element={<ProtectedRoute><Irrigation /></ProtectedRoute>} />
-            <Route path="/dashboard/fertilizer" element={<ProtectedRoute><Fertilizer /></ProtectedRoute>} />
-            <Route path="/dashboard/calendar" element={<ProtectedRoute><FarmCalendar /></ProtectedRoute>} />
-            <Route path="/dashboard/marketplace" element={<ProtectedRoute><Marketplace /></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/crops" element={<CropAdvisor />} />
+            <Route path="/dashboard/disease" element={<DiseaseScanner />} />
+            <Route path="/dashboard/assistant" element={<AIAssistant />} />
+            <Route path="/dashboard/weather" element={<Weather />} />
+            <Route path="/dashboard/irrigation" element={<Irrigation />} />
+            <Route path="/dashboard/fertilizer" element={<Fertilizer />} />
+            <Route path="/dashboard/calendar" element={<FarmCalendar />} />
+            <Route path="/dashboard/marketplace" element={<Marketplace />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
