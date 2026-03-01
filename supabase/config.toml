@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.irrigation-advisor]
 verify_jwt = false
+
+[functions.soil-analysis]
+verify_jwt = false
