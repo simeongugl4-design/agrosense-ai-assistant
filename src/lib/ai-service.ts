@@ -306,3 +306,26 @@ export async function getIrrigationPlan(params: {
 
   return data;
 }
+
+// Analyze soil from photo
+export async function analyzeSoil(params: {
+  imageBase64: string;
+  location?: string;
+  currentCrops?: string;
+  language?: string;
+}): Promise<any> {
+  const { data, error } = await supabase.functions.invoke("soil-analysis", {
+    body: params,
+  });
+
+  if (error) {
+    console.error("Soil analysis error:", error);
+    throw new Error(error.message || "Failed to analyze soil");
+  }
+
+  if (data.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+}

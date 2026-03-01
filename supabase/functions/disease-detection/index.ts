@@ -11,18 +11,20 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, cropType, symptoms } = await req.json();
+    const { imageBase64, cropType, symptoms, language } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build the message with image if provided
+    const langInstruction = language && language !== "English" 
+      ? `IMPORTANT: Respond entirely in ${language}. All text must be in ${language}.` 
+      : "";
+
     const messages: any[] = [];
     
     if (imageBase64) {
-      // Use vision capability with image
       messages.push({
         role: "user",
         content: [
@@ -34,22 +36,57 @@ serve(async (req) => {
           },
           {
             type: "text",
-            text: `Analyze this crop image for diseases, pests, or nutrient deficiencies.
-${cropType ? `Crop type: ${cropType}` : ''}
+            text: `You are an expert agricultural scientist specializing in plant pathology and crop identification. Analyze this leaf/crop image comprehensively.
+${langInstruction}
+${cropType ? `Farmer says crop type: ${cropType}` : ''}
 ${symptoms ? `Reported symptoms: ${symptoms}` : ''}
 
-Provide analysis in this JSON format:
+Provide a COMPLETE analysis in this JSON format:
 {
-  "disease": "Disease/Issue Name",
-  "confidence": 85,
-  "severity": "Mild/Moderate/Severe",
-  "symptoms": ["symptom 1", "symptom 2"],
-  "treatment": {
-    "organic": "Organic treatment options with dosages",
-    "chemical": "Chemical treatment options with dosages",
-    "immediate": "What to do right now"
+  "cropIdentification": {
+    "name": "Identified crop name",
+    "scientificName": "Latin name",
+    "family": "Plant family",
+    "growthStage": "Current growth stage",
+    "overallHealth": "Healthy/Stressed/Diseased/Critical"
   },
-  "prevention": "How to prevent this in future",
+  "disease": "Disease/Issue Name (or 'Healthy' if none found)",
+  "confidence": 85,
+  "severity": "Mild/Moderate/Severe/None",
+  "symptoms": ["Visible symptom 1", "Visible symptom 2"],
+  "diseaseInfo": {
+    "causedBy": "Pathogen/Pest/Deficiency name",
+    "type": "Fungal/Bacterial/Viral/Pest/Nutrient Deficiency",
+    "spreadMethod": "How it spreads",
+    "affectedParts": ["leaves", "stems", "roots"],
+    "progressionRate": "Slow/Moderate/Fast"
+  },
+  "treatment": {
+    "immediate": "What to do RIGHT NOW",
+    "organic": "Organic treatment with exact dosages and application method",
+    "chemical": {
+      "products": [
+        {
+          "name": "Chemical product name",
+          "activeIngredient": "Active ingredient",
+          "dosage": "Exact dosage per liter/hectare",
+          "applicationMethod": "Spray/Drench/Soil application",
+          "frequency": "How often to apply",
+          "waitingPeriod": "Days before harvest after application",
+          "safetyPrecautions": "Safety measures"
+        }
+      ]
+    }
+  },
+  "prevention": "How to prevent in future seasons",
+  "cropInfo": {
+    "optimalConditions": "Ideal growing conditions",
+    "waterNeeds": "Water requirements",
+    "nutrientNeeds": "Key nutrients needed",
+    "commonPests": ["Common pest 1", "Common pest 2"],
+    "companionPlants": ["Good companion plants"],
+    "harvestIndicators": "Signs crop is ready for harvest"
+  },
   "expertNeeded": false,
   "expertReason": "When to consult an expert"
 }
@@ -59,29 +96,62 @@ Return ONLY valid JSON.`
         ]
       });
     } else {
-      // Text-only analysis based on symptoms
       messages.push({
         role: "user",
-        content: `As an agricultural disease expert, analyze these crop symptoms:
+        content: `You are an expert agricultural scientist. Analyze these crop symptoms:
+${langInstruction}
 
 Crop Type: ${cropType || 'Unknown'}
-Reported Symptoms: ${symptoms || 'No symptoms described'}
+Symptoms: ${symptoms || 'No symptoms described'}
 
 Provide diagnosis in this JSON format:
 {
+  "cropIdentification": {
+    "name": "${cropType || 'Unknown'}",
+    "scientificName": "If known",
+    "family": "Plant family",
+    "growthStage": "Unknown from text",
+    "overallHealth": "Potentially Diseased"
+  },
   "disease": "Most Likely Disease/Issue",
-  "confidence": 75,
+  "confidence": 70,
   "severity": "Mild/Moderate/Severe",
   "symptoms": ["symptom 1", "symptom 2"],
-  "treatment": {
-    "organic": "Organic treatment options with dosages",
-    "chemical": "Chemical treatment options with dosages",
-    "immediate": "What to do right now"
+  "diseaseInfo": {
+    "causedBy": "Pathogen name",
+    "type": "Fungal/Bacterial/Viral/Pest/Nutrient",
+    "spreadMethod": "How it spreads",
+    "affectedParts": ["affected parts"],
+    "progressionRate": "Rate"
   },
-  "prevention": "How to prevent this in future",
+  "treatment": {
+    "immediate": "What to do now",
+    "organic": "Organic options with dosages",
+    "chemical": {
+      "products": [
+        {
+          "name": "Product name",
+          "activeIngredient": "Active ingredient",
+          "dosage": "Dosage",
+          "applicationMethod": "Method",
+          "frequency": "Frequency",
+          "waitingPeriod": "Waiting period",
+          "safetyPrecautions": "Safety"
+        }
+      ]
+    }
+  },
+  "prevention": "Prevention tips",
+  "cropInfo": {
+    "optimalConditions": "Growing conditions",
+    "waterNeeds": "Water needs",
+    "nutrientNeeds": "Nutrients",
+    "commonPests": ["pests"],
+    "companionPlants": ["companions"],
+    "harvestIndicators": "Harvest signs"
+  },
   "expertNeeded": false,
-  "expertReason": "When to consult an expert",
-  "possibleAlternatives": ["Other possible causes"]
+  "expertReason": "When to get expert"
 }
 
 Return ONLY valid JSON.`
@@ -95,12 +165,22 @@ Return ONLY valid JSON.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash", // Using flash for vision capability
+        model: "google/gemini-2.5-flash",
         messages,
       }),
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Credits exhausted." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
       throw new Error("AI service error");
@@ -109,29 +189,26 @@ Return ONLY valid JSON.`
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     
-    // Parse the JSON from the response
     let analysis;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
       } else {
-        throw new Error("No JSON found in response");
+        throw new Error("No JSON found");
       }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
-      // Return a structured error response
+    } catch {
+      console.error("Failed to parse:", content);
       analysis = {
+        cropIdentification: { name: "Unknown", scientificName: "", family: "", growthStage: "Unknown", overallHealth: "Unknown" },
         disease: "Analysis Inconclusive",
         confidence: 50,
         severity: "Unknown",
         symptoms: ["Please provide clearer image or more details"],
-        treatment: {
-          organic: "Consult local agricultural officer for accurate diagnosis",
-          chemical: "Do not apply chemicals without proper diagnosis",
-          immediate: "Isolate affected plants if possible"
-        },
-        prevention: "Regular monitoring and early detection helps prevent spread",
+        diseaseInfo: { causedBy: "Unknown", type: "Unknown", spreadMethod: "Unknown", affectedParts: [], progressionRate: "Unknown" },
+        treatment: { immediate: "Isolate affected plants", organic: "Consult local agricultural officer", chemical: { products: [] } },
+        prevention: "Regular monitoring helps",
+        cropInfo: { optimalConditions: "", waterNeeds: "", nutrientNeeds: "", commonPests: [], companionPlants: [], harvestIndicators: "" },
         expertNeeded: true,
         expertReason: "AI could not make a confident diagnosis"
       };
