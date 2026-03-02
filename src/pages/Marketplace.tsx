@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ShoppingCart, Plus, MapPin, Phone, Tag, TrendingUp, Loader2,
-  Search, Filter, Package, IndianRupee, Wheat, MessageCircle, Send, X,
+  Search, Filter, Package, Wheat, MessageCircle, Send, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,8 +48,17 @@ interface ChatMessage {
 
 const cropOptions = [
   "Wheat", "Rice", "Maize", "Cotton", "Sugarcane", "Potato", "Tomato",
-  "Onion", "Soybean", "Groundnut", "Mustard", "Pulses", "Vegetables", "Fruits", "Other",
+  "Onion", "Soybean", "Groundnut", "Mustard", "Pulses", "Vegetables", "Fruits", "Coffee", "Tea", "Cocoa", "Cassava", "Millet", "Sorghum", "Other",
 ];
+
+function getGuestId() {
+  let id = localStorage.getItem("agrosense_guest_id");
+  if (!id) {
+    id = `guest-${Date.now()}`;
+    localStorage.setItem("agrosense_guest_id", id);
+  }
+  return id;
+}
 
 export default function Marketplace() {
   const { user } = useAuth();
@@ -63,17 +72,18 @@ export default function Marketplace() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatName, setChatName] = useState(() => localStorage.getItem("agrosense_chat_name") || "");
+  const [nameSet, setNameSet] = useState(() => !!localStorage.getItem("agrosense_chat_name"));
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [newListing, setNewListing] = useState({
     title: "", description: "", crop_type: "", quantity: "", unit: "kg",
     price_per_unit: "", location: "", listing_type: "sell", contact_phone: "",
   });
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => { fetchListings(); }, []);
 
   useEffect(() => {
     if (!chatOpen) return;
-    // Load messages
     const load = async () => {
       const { data } = await supabase
         .from("chat_messages")
@@ -84,7 +94,6 @@ export default function Marketplace() {
     };
     load();
 
-    // Subscribe to realtime
     const channel = supabase
       .channel(`chat-${chatOpen}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `listing_id=eq.${chatOpen}` },
@@ -103,6 +112,7 @@ export default function Marketplace() {
   const fetchListings = async () => {
     setIsLoading(true);
     const { data, error } = await supabase.from("marketplace_listings").select("*").order("created_at", { ascending: false });
+    if (error) console.error("Fetch listings error:", error);
     if (!error) setListings(data || []);
     setIsLoading(false);
   };
@@ -112,8 +122,8 @@ export default function Marketplace() {
       toast({ variant: "destructive", title: "Please fill all required fields" });
       return;
     }
-    // Use a guest ID if not logged in
-    const userId = user?.id || `guest-${Date.now()}`;
+    setIsCreating(true);
+    const userId = user?.id || getGuestId();
     const { error } = await supabase.from("marketplace_listings").insert({
       user_id: userId,
       title: newListing.title,
@@ -126,6 +136,7 @@ export default function Marketplace() {
       listing_type: newListing.listing_type,
       contact_phone: newListing.contact_phone || null,
     });
+    setIsCreating(false);
     if (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Failed to create listing", description: error.message });
@@ -149,21 +160,36 @@ export default function Marketplace() {
 
   const handleSendChat = async () => {
     if (!chatInput.trim() || !chatOpen) return;
-    const name = chatName || "Anonymous Farmer";
-    if (chatName) localStorage.setItem("agrosense_chat_name", chatName);
-    const senderId = user?.id || `guest-${localStorage.getItem("agrosense_guest_id") || (() => { const id = Date.now().toString(); localStorage.setItem("agrosense_guest_id", id); return id; })()}`;
+    if (!nameSet || !chatName.trim()) {
+      toast({ variant: "destructive", title: "Please enter your name first" });
+      return;
+    }
+    const senderId = user?.id || getGuestId();
 
-    await supabase.from("chat_messages").insert({
+    const { error } = await supabase.from("chat_messages").insert({
       listing_id: chatOpen,
       sender_id: senderId,
-      sender_name: name,
+      sender_name: chatName.trim(),
       message: chatInput.trim(),
     });
-    setChatInput("");
+    if (error) {
+      console.error("Chat error:", error);
+      toast({ variant: "destructive", title: "Failed to send message" });
+    } else {
+      setChatInput("");
+    }
   };
 
+  const handleSetName = () => {
+    if (chatName.trim()) {
+      localStorage.setItem("agrosense_chat_name", chatName.trim());
+      setNameSet(true);
+    }
+  };
+
+  const myId = user?.id || getGuestId();
   const displayedListings = listings.filter(l => {
-    if (tab === "my") return l.user_id === user?.id;
+    if (tab === "my") return l.user_id === myId;
     const matchesSearch = !searchQuery || l.title.toLowerCase().includes(searchQuery.toLowerCase()) || l.crop_type.toLowerCase().includes(searchQuery.toLowerCase()) || (l.location || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || l.listing_type === typeFilter;
     return matchesSearch && matchesType && l.status === "active";
@@ -192,7 +218,7 @@ export default function Marketplace() {
               <p className="text-sm text-muted-foreground">Buy Requests</p>
             </div>
             <div className="bg-card rounded-xl border border-border p-4 text-center">
-              <p className="text-2xl font-bold text-secondary">{listings.filter(l => l.user_id === user?.id).length}</p>
+              <p className="text-2xl font-bold text-secondary">{listings.filter(l => l.user_id === myId).length}</p>
               <p className="text-sm text-muted-foreground">My Listings</p>
             </div>
           </div>
@@ -236,17 +262,21 @@ export default function Marketplace() {
                           <SelectItem value="kg">Kg</SelectItem>
                           <SelectItem value="quintal">Quintal</SelectItem>
                           <SelectItem value="ton">Ton</SelectItem>
+                          <SelectItem value="bag">Bag</SelectItem>
+                          <SelectItem value="crate">Crate</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2"><Label>Price/Unit *</Label><Input type="number" placeholder="₹2500" value={newListing.price_per_unit} onChange={e => setNewListing({ ...newListing, price_per_unit: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Price/Unit *</Label><Input type="number" placeholder="2500" value={newListing.price_per_unit} onChange={e => setNewListing({ ...newListing, price_per_unit: e.target.value })} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2"><Label>Location</Label><Input placeholder="e.g., Ludhiana, Punjab" value={newListing.location} onChange={e => setNewListing({ ...newListing, location: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Contact Phone</Label><Input placeholder="+91 XXXXX XXXXX" value={newListing.contact_phone} onChange={e => setNewListing({ ...newListing, contact_phone: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Location</Label><Input placeholder="e.g., Nairobi, Kenya" value={newListing.location} onChange={e => setNewListing({ ...newListing, location: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Contact Phone</Label><Input placeholder="+254 7XX XXX XXX" value={newListing.contact_phone} onChange={e => setNewListing({ ...newListing, contact_phone: e.target.value })} /></div>
                   </div>
                   <div className="space-y-2"><Label>Description</Label><Textarea placeholder="Quality details, delivery info..." value={newListing.description} rows={3} onChange={e => setNewListing({ ...newListing, description: e.target.value })} /></div>
-                  <Button className="w-full" onClick={handleCreateListing} disabled={!newListing.title || !newListing.crop_type || !newListing.quantity || !newListing.price_per_unit}>Create Listing</Button>
+                  <Button className="w-full" onClick={handleCreateListing} disabled={isCreating || !newListing.title || !newListing.crop_type || !newListing.quantity || !newListing.price_per_unit}>
+                    {isCreating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</> : "Create Listing"}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -292,7 +322,7 @@ export default function Marketplace() {
                   <div className="space-y-2 mb-3">
                     <div className="flex items-center gap-2 text-sm"><Wheat className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">Crop:</span><span className="font-medium text-foreground capitalize">{listing.crop_type}</span></div>
                     <div className="flex items-center gap-2 text-sm"><Package className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">Qty:</span><span className="font-medium text-foreground">{listing.quantity} {listing.unit}</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Tag className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">Price:</span><span className="font-bold text-success">₹{listing.price_per_unit}/{listing.unit}</span></div>
+                    <div className="flex items-center gap-2 text-sm"><Tag className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">Price:</span><span className="font-bold text-success">{listing.price_per_unit}/{listing.unit}</span></div>
                     {listing.location && <div className="flex items-center gap-2 text-sm"><MapPin className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground truncate">{listing.location}</span></div>}
                   </div>
                   {listing.description && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{listing.description}</p>}
@@ -302,11 +332,10 @@ export default function Marketplace() {
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <span className="text-xs text-muted-foreground">{new Date(listing.created_at).toLocaleDateString()}</span>
                     <div className="flex gap-2">
-                      {/* Chat button */}
                       <Button size="sm" variant="outline" onClick={() => setChatOpen(listing.id)}>
                         <MessageCircle className="w-3 h-3 mr-1" /> Chat
                       </Button>
-                      {listing.user_id === user?.id && listing.status === "active" && (
+                      {listing.user_id === myId && listing.status === "active" && (
                         <>
                           <Button size="sm" variant="outline" onClick={() => handleMarkSold(listing.id)}>Sold</Button>
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(listing.id)}>Delete</Button>
@@ -320,7 +349,8 @@ export default function Marketplace() {
           ) : (
             <div className="text-center py-16">
               <ShoppingCart className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground">{tab === "my" ? "You haven't created any listings yet." : "No listings found."}</p>
+              <p className="text-muted-foreground mb-4">{tab === "my" ? "You haven't created any listings yet." : "No listings found."}</p>
+              <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" />Create First Listing</Button>
             </div>
           )}
 
@@ -337,12 +367,12 @@ export default function Marketplace() {
                   <button onClick={() => setChatOpen(null)} className="p-1 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button>
                 </div>
                 {/* Name input */}
-                {!chatName && (
+                {!nameSet && (
                   <div className="p-4 border-b border-border bg-muted/50">
-                    <Label className="text-xs">Enter your name to chat</Label>
+                    <Label className="text-xs">Enter your name to start chatting</Label>
                     <div className="flex gap-2 mt-1">
-                      <Input placeholder="Your name" value={chatName} onChange={e => setChatName(e.target.value)} className="flex-1" />
-                      <Button size="sm" onClick={() => { if (chatName) localStorage.setItem("agrosense_chat_name", chatName); }}>Set</Button>
+                      <Input placeholder="Your name" value={chatName} onChange={e => setChatName(e.target.value)} className="flex-1" onKeyPress={e => e.key === "Enter" && handleSetName()} />
+                      <Button size="sm" onClick={handleSetName} disabled={!chatName.trim()}>Set</Button>
                     </div>
                   </div>
                 )}
@@ -352,7 +382,7 @@ export default function Marketplace() {
                     <p className="text-center text-sm text-muted-foreground py-8">No messages yet. Start the conversation!</p>
                   )}
                   {chatMessages.map(msg => {
-                    const isMe = msg.sender_id === (user?.id || `guest-${localStorage.getItem("agrosense_guest_id")}`);
+                    const isMe = msg.sender_id === myId;
                     return (
                       <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[80%] p-3 rounded-2xl ${isMe ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
@@ -367,8 +397,8 @@ export default function Marketplace() {
                 </div>
                 {/* Input */}
                 <div className="p-3 border-t border-border flex gap-2">
-                  <Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Type a message..." className="flex-1" onKeyPress={e => e.key === "Enter" && handleSendChat()} />
-                  <Button onClick={handleSendChat} disabled={!chatInput.trim()}><Send className="w-4 h-4" /></Button>
+                  <Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={nameSet ? "Type a message..." : "Set your name first..."} className="flex-1" onKeyPress={e => e.key === "Enter" && handleSendChat()} disabled={!nameSet} />
+                  <Button onClick={handleSendChat} disabled={!chatInput.trim() || !nameSet}><Send className="w-4 h-4" /></Button>
                 </div>
               </div>
             </div>
