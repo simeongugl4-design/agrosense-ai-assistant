@@ -3,17 +3,9 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { 
-  Sprout, 
-  Cloud, 
-  Droplets, 
-  TrendingUp, 
-  AlertTriangle,
-  Sun,
-  Wind,
-  Thermometer,
-  Calendar,
-  ShoppingCart,
-  Loader2,
+  Sprout, Cloud, Droplets, TrendingUp, AlertTriangle,
+  Sun, Wind, Thermometer, Calendar, ShoppingCart, Loader2,
+  TestTubes, Camera, MessageCircle, Leaf,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +13,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { getWeatherData } from "@/lib/ai-service";
 import type { WeatherData } from "@/lib/ai-service";
+import { LanguageSelector } from "@/components/dashboard/LanguageSelector";
+import { useLanguage } from "@/hooks/useLanguage";
 
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -29,52 +23,21 @@ function cn(...classes: (string | boolean | undefined)[]) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [eventsCount, setEventsCount] = useState({ total: 0, upcoming: 0, urgent: 0, completed: 0 });
-  const [listingsCount, setListingsCount] = useState({ active: 0, myListings: 0 });
+  const { selectedCountry, selectedLanguage } = useLanguage();
+  const [listingsCount, setListingsCount] = useState({ active: 0 });
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [profileLocation, setProfileLocation] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
+    fetchListings();
+    // Try to get weather for a default location
+    fetchWeather("Nairobi");
+  }, []);
 
-  const fetchDashboardData = async () => {
-    if (!user) return;
-
-    // Fetch profile, events, and listings in parallel
-    const [profileRes, eventsRes, listingsRes] = await Promise.all([
-      supabase.from("profiles").select("location, farm_size, primary_crop").eq("user_id", user.id).maybeSingle(),
-      supabase.from("farm_events").select("id, event_date, is_completed, priority"),
-      supabase.from("marketplace_listings").select("id, user_id, status"),
-    ]);
-
-    // Profile location for weather
-    if (profileRes.data?.location) {
-      setProfileLocation(profileRes.data.location);
-      fetchWeather(profileRes.data.location);
-    }
-
-    // Events stats
-    if (eventsRes.data) {
-      const today = new Date().toISOString().split("T")[0];
-      const threeDaysLater = new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0];
-      setEventsCount({
-        total: eventsRes.data.length,
-        upcoming: eventsRes.data.filter(e => !e.is_completed && e.event_date >= today).length,
-        urgent: eventsRes.data.filter(e => !e.is_completed && e.priority === "high" && e.event_date >= today && e.event_date <= threeDaysLater).length,
-        completed: eventsRes.data.filter(e => e.is_completed).length,
-      });
-    }
-
-    // Listings stats
-    if (listingsRes.data) {
-      setListingsCount({
-        active: listingsRes.data.filter(l => l.status === "active").length,
-        myListings: listingsRes.data.filter(l => l.user_id === user.id).length,
-      });
+  const fetchListings = async () => {
+    const { data } = await supabase.from("marketplace_listings").select("id, status");
+    if (data) {
+      setListingsCount({ active: data.filter(l => l.status === "active").length });
     }
   };
 
@@ -90,66 +53,71 @@ export default function Dashboard() {
     }
   };
 
-  const getWeatherIcon = (code: number) => {
-    if (code <= 3) return Sun;
-    if (code >= 51 && code <= 67) return Cloud;
-    if (code >= 80) return Cloud;
-    return Cloud;
-  };
-
   const quickActions = [
-    { icon: Sprout, label: "Crop Advisor", color: "bg-success/10 text-success", path: "/dashboard/crops" },
-    { icon: Cloud, label: "Weather", color: "bg-accent/10 text-accent", path: "/dashboard/weather" },
-    { icon: Droplets, label: "Irrigation", color: "bg-accent/10 text-accent", path: "/dashboard/irrigation" },
-    { icon: Thermometer, label: "Fertilizer", color: "bg-warning/10 text-warning", path: "/dashboard/fertilizer" },
-    { icon: Calendar, label: "Farm Calendar", color: "bg-primary/10 text-primary", path: "/dashboard/calendar" },
-    { icon: ShoppingCart, label: "Marketplace", color: "bg-secondary/10 text-secondary", path: "/dashboard/marketplace" },
+    { icon: Sprout, label: "Crop Advisor", color: "bg-success/10 text-success", path: "/dashboard/crops", desc: "Get crop recommendations" },
+    { icon: Cloud, label: "Weather", color: "bg-accent/10 text-accent", path: "/dashboard/weather", desc: "Real-time forecasts" },
+    { icon: TestTubes, label: "Soil Analysis", color: "bg-warning/10 text-warning", path: "/dashboard/soil", desc: "Photo-based testing" },
+    { icon: Camera, label: "Disease Scanner", color: "bg-destructive/10 text-destructive", path: "/dashboard/disease", desc: "Leaf & disease detection" },
+    { icon: Droplets, label: "Irrigation", color: "bg-accent/10 text-accent", path: "/dashboard/irrigation", desc: "Smart water management" },
+    { icon: Thermometer, label: "Fertilizer", color: "bg-warning/10 text-warning", path: "/dashboard/fertilizer", desc: "Nutrient planning" },
+    { icon: Calendar, label: "Farm Calendar", color: "bg-primary/10 text-primary", path: "/dashboard/calendar", desc: "Schedule activities" },
+    { icon: ShoppingCart, label: "Marketplace", color: "bg-secondary/10 text-secondary", path: "/dashboard/marketplace", desc: "Buy & sell produce" },
+    { icon: MessageCircle, label: "AI Assistant", color: "bg-primary/10 text-primary", path: "/dashboard/assistant", desc: "Ask anything" },
   ];
 
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="lg:ml-64">
-        <Header title="Dashboard" subtitle="Welcome back! Here's your farm overview." />
+        <Header title="Dashboard" subtitle="Welcome! Here's your agricultural command center." />
         
         <main className="p-4 lg:p-6">
+          {/* Language Selector Banner */}
+          <div className="mb-6 p-4 bg-card rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">🌍 Set your country & language</p>
+              <p className="text-xs text-muted-foreground">All AI features will respond in your selected language</p>
+            </div>
+            <LanguageSelector />
+          </div>
+
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <StatCard
-              title="Farm Events"
-              value={eventsCount.total.toString()}
-              change={`${eventsCount.upcoming} upcoming`}
-              changeType="positive"
-              icon={Calendar}
-              iconColor="text-primary"
-              iconBg="bg-primary/10"
-            />
-            <StatCard
-              title="Urgent Tasks"
-              value={eventsCount.urgent.toString()}
-              change={eventsCount.urgent > 0 ? "Needs attention!" : "All on track"}
-              changeType={eventsCount.urgent > 0 ? "negative" : "positive"}
-              icon={AlertTriangle}
-              iconColor={eventsCount.urgent > 0 ? "text-destructive" : "text-success"}
-              iconBg={eventsCount.urgent > 0 ? "bg-destructive/10" : "bg-success/10"}
-            />
-            <StatCard
-              title="Completed"
-              value={eventsCount.completed.toString()}
-              change="Tasks done"
-              changeType="positive"
-              icon={Sprout}
-              iconColor="text-success"
-              iconBg="bg-success/10"
-            />
-            <StatCard
               title="Marketplace"
               value={listingsCount.active.toString()}
-              change={`${listingsCount.myListings} your listings`}
+              change="Active listings"
               changeType="positive"
               icon={TrendingUp}
               iconColor="text-secondary"
               iconBg="bg-secondary/10"
+            />
+            <StatCard
+              title="Weather"
+              value={weather ? `${weather.current.temp}°C` : "—"}
+              change={weather?.location || "Search a location"}
+              changeType="positive"
+              icon={Cloud}
+              iconColor="text-accent"
+              iconBg="bg-accent/10"
+            />
+            <StatCard
+              title="Language"
+              value={selectedLanguage || "English"}
+              change={selectedCountry || "Not set"}
+              changeType="positive"
+              icon={Leaf}
+              iconColor="text-primary"
+              iconBg="bg-primary/10"
+            />
+            <StatCard
+              title="AI Features"
+              value="9"
+              change="All active"
+              changeType="positive"
+              icon={Sprout}
+              iconColor="text-success"
+              iconBg="bg-success/10"
             />
           </div>
 
@@ -195,16 +163,10 @@ export default function Dashboard() {
                 </>
               ) : (
                 <div className="text-center py-6">
-                  <p className="opacity-80 text-sm mb-3">
-                    {profileLocation ? "Loading weather..." : "Set your location in Settings to see live weather"}
-                  </p>
+                  <p className="opacity-80 text-sm">Loading weather...</p>
                 </div>
               )}
-              <Button 
-                variant="secondary" 
-                className="w-full mt-4"
-                onClick={() => navigate("/dashboard/weather")}
-              >
+              <Button variant="secondary" className="w-full mt-4" onClick={() => navigate("/dashboard/weather")}>
                 View Full Forecast
               </Button>
             </div>
@@ -222,10 +184,8 @@ export default function Dashboard() {
                       key={index}
                       className={cn(
                         "p-3 lg:p-4 rounded-lg border",
-                        alert.type === "warning" 
-                          ? "bg-warning/10 border-warning/30" 
-                          : alert.type === "success"
-                          ? "bg-success/10 border-success/30"
+                        alert.type === "warning" ? "bg-warning/10 border-warning/30" 
+                          : alert.type === "success" ? "bg-success/10 border-success/30"
                           : "bg-accent/10 border-accent/30"
                       )}
                     >
@@ -236,27 +196,19 @@ export default function Dashboard() {
                 ) : (
                   <>
                     <div className="p-3 lg:p-4 rounded-lg border bg-accent/10 border-accent/30">
-                      <p className="text-foreground text-sm">
-                        {profileLocation 
-                          ? "Loading AI recommendations based on your weather..."
-                          : "Set your location in Settings to get AI farming recommendations based on real weather data."
-                        }
-                      </p>
+                      <p className="text-foreground text-sm">🧪 <strong>Soil Analysis</strong> — Upload a soil photo to get nutrient levels and crop recommendations.</p>
                     </div>
                     <div className="p-3 lg:p-4 rounded-lg border bg-success/10 border-success/30">
-                      <p className="text-foreground text-sm">
-                        Use the Crop Advisor to get AI-powered crop recommendations based on your soil and location.
-                      </p>
+                      <p className="text-foreground text-sm">🍃 <strong>Disease Scanner</strong> — Take a photo of any crop leaf to identify diseases and get treatment plans.</p>
+                    </div>
+                    <div className="p-3 lg:p-4 rounded-lg border bg-warning/10 border-warning/30">
+                      <p className="text-foreground text-sm">🤖 <strong>AI Assistant</strong> — Ask any farming question in your own language and get expert advice.</p>
                     </div>
                   </>
                 )}
               </div>
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={() => navigate("/dashboard/weather")}
-              >
-                View All Recommendations
+              <Button variant="outline" className="w-full mt-4" onClick={() => navigate("/dashboard/assistant")}>
+                Chat with AI Assistant
               </Button>
             </div>
           </div>
@@ -264,17 +216,18 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="mt-6 lg:mt-8">
             <h3 className="font-semibold text-lg text-foreground mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
               {quickActions.map((action, index) => (
                 <button
                   key={index}
                   onClick={() => navigate(action.path)}
-                  className="flex flex-col items-center gap-2 lg:gap-3 p-4 lg:p-6 bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-md transition-all"
+                  className="flex flex-col items-center gap-2 p-4 lg:p-5 bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-md transition-all group"
                 >
-                  <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl ${action.color} flex items-center justify-center`}>
+                  <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <action.icon className="w-5 h-5 lg:w-6 lg:h-6" />
                   </div>
                   <span className="text-xs lg:text-sm font-medium text-foreground text-center">{action.label}</span>
+                  <span className="text-[10px] text-muted-foreground text-center">{action.desc}</span>
                 </button>
               ))}
             </div>

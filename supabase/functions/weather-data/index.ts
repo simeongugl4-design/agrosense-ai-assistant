@@ -19,34 +19,60 @@ serve(async (req) => {
 
     console.log("Weather request for location:", location);
 
-    // Step 1: Geocode the location name to lat/lon using Open-Meteo geocoding
-    // Use the first part of the location (city name) for better geocoding results
-    const cityName = location.split(",")[0].trim();
-    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=5&language=en`;
-    const geoRes = await fetch(geoUrl);
-    const geoData = await geoRes.json();
+    let latitude: number, longitude: number, locationName: string;
 
-    if (!geoData.results || geoData.results.length === 0) {
-      throw new Error(`Location "${location}" not found. Try a major city name like "Delhi" or "Mumbai".`);
+    // Check if location is coordinates (lat, lon)
+    const coordsMatch = location.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+    
+    if (coordsMatch) {
+      latitude = parseFloat(coordsMatch[1]);
+      longitude = parseFloat(coordsMatch[2]);
+      // Reverse geocode to get name
+      const reverseUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${latitude.toFixed(1)}&count=1`;
+      try {
+        const rRes = await fetch(reverseUrl);
+        const rData = await rRes.json();
+        locationName = rData.results?.[0] ? `${rData.results[0].name}, ${rData.results[0].country}` : `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+      } catch {
+        locationName = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+      }
+    } else {
+      // Geocode the location name - search broadly to find villages/towns
+      const searchTerms = location.split(",").map((p: string) => p.trim());
+      const primarySearch = searchTerms[0];
+      
+      // Search with larger count for better matching of small places
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(primarySearch)}&count=10&language=en`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+
+      if (!geoData.results || geoData.results.length === 0) {
+        throw new Error(`Location "${location}" not found. Try searching for a nearby town or city.`);
+      }
+
+      // Try to match region/country if provided
+      let bestResult = geoData.results[0];
+      if (searchTerms.length > 1) {
+        const regionTerms = searchTerms.slice(1).map((t: string) => t.toLowerCase());
+        const regionMatch = geoData.results.find((r: any) => 
+          regionTerms.some((term: string) =>
+            r.admin1?.toLowerCase().includes(term) || 
+            r.admin2?.toLowerCase().includes(term) || 
+            r.country?.toLowerCase().includes(term) ||
+            r.country_code?.toLowerCase() === term
+          )
+        );
+        if (regionMatch) bestResult = regionMatch;
+      }
+
+      latitude = bestResult.latitude;
+      longitude = bestResult.longitude;
+      locationName = `${bestResult.name}${bestResult.admin2 ? `, ${bestResult.admin2}` : ''}${bestResult.admin1 ? `, ${bestResult.admin1}` : ''}, ${bestResult.country}`;
     }
-
-    // Try to match the state/region if provided
-    const locationParts = location.split(",").map((p: string) => p.trim().toLowerCase());
-    let bestResult = geoData.results[0];
-    if (locationParts.length > 1) {
-      const regionMatch = geoData.results.find((r: any) => 
-        r.admin1?.toLowerCase().includes(locationParts[1]) || 
-        r.country?.toLowerCase().includes(locationParts[1])
-      );
-      if (regionMatch) bestResult = regionMatch;
-    }
-
-    const { latitude, longitude, name, country, admin1 } = bestResult;
-    const locationName = `${name}${admin1 ? `, ${admin1}` : ''}, ${country}`;
 
     console.log(`Resolved to: ${locationName} (${latitude}, ${longitude})`);
 
-    // Step 2: Fetch current weather + 7-day forecast from Open-Meteo
+    // Fetch current weather + 7-day forecast from Open-Meteo
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,uv_index,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max&timezone=auto&forecast_days=7`;
     
     const weatherRes = await fetch(weatherUrl);
@@ -56,14 +82,17 @@ serve(async (req) => {
       throw new Error("Failed to fetch weather data");
     }
 
-    // Map weather codes to conditions
     const weatherCodeMap: Record<number, string> = {
       0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
       45: "Foggy", 48: "Depositing Rime Fog",
       51: "Light Drizzle", 53: "Moderate Drizzle", 55: "Dense Drizzle",
+      56: "Light Freezing Drizzle", 57: "Dense Freezing Drizzle",
       61: "Slight Rain", 63: "Moderate Rain", 65: "Heavy Rain",
+      66: "Light Freezing Rain", 67: "Heavy Freezing Rain",
       71: "Slight Snow", 73: "Moderate Snow", 75: "Heavy Snow",
+      77: "Snow Grains",
       80: "Slight Rain Showers", 81: "Moderate Rain Showers", 82: "Violent Rain Showers",
+      85: "Slight Snow Showers", 86: "Heavy Snow Showers",
       95: "Thunderstorm", 96: "Thunderstorm with Slight Hail", 99: "Thunderstorm with Heavy Hail",
     };
 
@@ -79,14 +108,13 @@ serve(async (req) => {
     };
 
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const today = new Date();
 
     const forecast = weatherData.daily.time.map((date: string, i: number) => {
       const d = new Date(date);
       const dayName = i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[d.getDay()];
       return {
         day: dayName,
-        date: date,
+        date,
         high: Math.round(weatherData.daily.temperature_2m_max[i]),
         low: Math.round(weatherData.daily.temperature_2m_min[i]),
         rainChance: weatherData.daily.precipitation_probability_max[i],
@@ -98,7 +126,7 @@ serve(async (req) => {
       };
     });
 
-    // Step 3: Generate AI farming alerts based on weather
+    // Generate AI farming alerts
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     let farmingAlerts: any[] = [];
     let farmingTips: any[] = [];
@@ -109,7 +137,7 @@ serve(async (req) => {
         
         const aiPrompt = `Based on this 7-day weather forecast for ${locationName}:
 
-Current: ${current.condition}, ${current.temp}°C, Humidity: ${current.humidity}%, Wind: ${current.windSpeed}km/h
+Current: ${current.condition}, ${current.temp}°C, Humidity: ${current.humidity}%, Wind: ${current.windSpeed}km/h, UV: ${current.uvIndex}
 
 Forecast:
 ${forecastSummary}

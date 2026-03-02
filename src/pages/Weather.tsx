@@ -1,21 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { 
-  Cloud, 
-  Sun, 
-  CloudRain, 
-  Droplets, 
-  Wind, 
-  Thermometer,
-  AlertTriangle,
-  Calendar,
-  Sprout,
-  Loader2,
-  Search,
-  CloudSnow,
-  CloudLightning,
-  CloudFog,
+  Cloud, Sun, CloudRain, Droplets, Wind, Thermometer,
+  AlertTriangle, Calendar, Sprout, Loader2, Search,
+  CloudSnow, CloudLightning, CloudFog, MapPin, Navigation, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,25 +27,103 @@ export default function Weather() {
   const [location, setLocation] = useState("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  const handleSearch = async () => {
-    if (!location.trim()) {
+  // Autocomplete location search - works for villages, towns, cities
+  const handleLocationChange = (value: string) => {
+    setLocation(value);
+    if (searchTimeout) clearTimeout(searchTimeout);
+    if (value.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(value)}&count=8&language=en`);
+        const data = await res.json();
+        if (data.results) {
+          setSuggestions(data.results);
+          setShowSuggestions(true);
+        } else {
+          setSuggestions([]);
+        }
+      } catch { setSuggestions([]); }
+    }, 300);
+    setSearchTimeout(timeout);
+  };
+
+  const selectSuggestion = (suggestion: any) => {
+    const name = `${suggestion.name}${suggestion.admin1 ? `, ${suggestion.admin1}` : ''}, ${suggestion.country}`;
+    setLocation(name);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    handleSearchWithLocation(name);
+  };
+
+  // Get current location
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "Geolocation not supported" });
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          // Reverse geocode
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${latitude.toFixed(2)},${longitude.toFixed(2)}&count=1`);
+          // Use coordinates directly
+          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setIsLoading(true);
+          const data = await getWeatherData(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setWeather(data);
+        } catch (error) {
+          toast({ variant: "destructive", title: "Failed to get weather for your location" });
+        } finally {
+          setGeoLoading(false);
+          setIsLoading(false);
+        }
+      },
+      () => {
+        setGeoLoading(false);
+        toast({ variant: "destructive", title: "Location access denied", description: "Please enable location access or search manually" });
+      }
+    );
+  };
+
+  const handleSearchWithLocation = async (loc: string) => {
+    if (!loc.trim()) {
       toast({ variant: "destructive", title: "Please enter a location" });
       return;
     }
     setIsLoading(true);
+    setShowSuggestions(false);
     try {
-      const data = await getWeatherData(location.trim());
+      const data = await getWeatherData(loc.trim());
       setWeather(data);
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Weather Fetch Failed",
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
+      toast({ variant: "destructive", title: "Weather Fetch Failed", description: error instanceof Error ? error.message : "Please try again." });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearch = () => handleSearchWithLocation(location);
+
+  // Google Maps embed URL
+  const getMapUrl = () => {
+    if (!weather?.coordinates) return null;
+    const { latitude, longitude } = weather.coordinates;
+    return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${latitude},${longitude}&zoom=12&maptype=satellite`;
+  };
+
+  // OpenStreetMap fallback (no API key needed)
+  const getOSMMapUrl = () => {
+    if (!weather?.coordinates) return null;
+    const { latitude, longitude } = weather.coordinates;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude-0.05},${latitude-0.05},${longitude+0.05},${latitude+0.05}&layer=mapnik&marker=${latitude},${longitude}`;
   };
 
   return (
@@ -65,24 +132,50 @@ export default function Weather() {
       <div className="lg:ml-64">
         <Header 
           title="Weather Intelligence" 
-          subtitle="Real-time weather data with AI-powered farming insights" 
+          subtitle="Real-time weather for any village, town or city worldwide" 
         />
         
         <main className="p-4 lg:p-6">
-          {/* Search Bar */}
-          <div className="flex gap-3 mb-6 lg:mb-8">
+          {/* Search Bar with autocomplete */}
+          <div className="flex gap-3 mb-6 lg:mb-8 relative">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Enter your location (e.g., Ludhiana, Punjab)"
+                placeholder="Search any place — village, town, city (e.g., Kibera, Nairobi)"
                 className="pl-10"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => handleLocationChange(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               />
+              {/* Autocomplete dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      className="w-full text-left px-4 py-3 hover:bg-muted/50 flex items-center gap-3 transition-colors border-b border-border/50 last:border-0"
+                      onMouseDown={() => selectSuggestion(s)}
+                    >
+                      <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {s.admin1 && `${s.admin1}, `}{s.admin2 && `${s.admin2}, `}{s.country}
+                          {s.population && ` · Pop: ${s.population.toLocaleString()}`}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <Button onClick={handleSearch} disabled={isLoading}>
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get Weather"}
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Globe className="w-4 h-4 mr-2" />Get Weather</>}
+            </Button>
+            <Button variant="outline" onClick={handleGetCurrentLocation} disabled={geoLoading}>
+              {geoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Navigation className="w-4 h-4 mr-1" />My Location</>}
             </Button>
           </div>
 
@@ -99,17 +192,28 @@ export default function Weather() {
           {!isLoading && !weather && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Cloud className="w-16 h-16 text-muted-foreground/30 mb-4" />
-              <p className="text-foreground font-medium mb-2">Enter your location to get started</p>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Get real-time weather data, 7-day forecast, and AI-powered farming recommendations tailored to your area.
+              <p className="text-foreground font-medium mb-2">Search any location worldwide</p>
+              <p className="text-sm text-muted-foreground max-w-md mb-4">
+                Get real-time weather for any village, town, or city. Type to search — our system covers every corner of the earth.
               </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {["Kibera, Kenya", "Ludhiana, India", "Kumasi, Ghana", "São Paulo, Brazil", "Iowa, USA"].map(place => (
+                  <button
+                    key={place}
+                    onClick={() => { setLocation(place); handleSearchWithLocation(place); }}
+                    className="px-3 py-1.5 bg-card border border-border rounded-full text-xs text-foreground hover:border-primary/50 transition-all"
+                  >
+                    📍 {place}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
           {/* Weather Data */}
           {!isLoading && weather && (
             <>
-              {/* Current Weather + Alerts */}
+              {/* Current Weather + Map */}
               <div className="grid lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
                 <div className="lg:col-span-1 bg-gradient-to-br from-accent to-accent/80 rounded-xl p-5 lg:p-6 text-accent-foreground">
                   <div className="flex items-center justify-between mb-4">
@@ -153,32 +257,53 @@ export default function Weather() {
                   </div>
                 </div>
 
-                {/* Farming Alerts */}
-                <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 lg:p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-warning" />
-                    AI Farming Alerts
-                  </h3>
-                  <div className="space-y-3">
-                    {weather.farmingAlerts.length > 0 ? (
-                      weather.farmingAlerts.map((alert, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 lg:p-4 rounded-lg border ${
-                            alert.type === "warning"
-                              ? "bg-warning/10 border-warning/30"
-                              : alert.type === "success"
-                              ? "bg-success/10 border-success/30"
-                              : "bg-accent/10 border-accent/30"
-                          }`}
-                        >
-                          <h4 className="font-medium text-foreground text-sm">{alert.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-sm">No specific alerts for your area today.</p>
-                    )}
+                {/* Map + Alerts */}
+                <div className="lg:col-span-2 space-y-4">
+                  {/* Interactive Map */}
+                  <div className="bg-card rounded-xl border border-border overflow-hidden">
+                    <div className="p-3 border-b border-border flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">Farm Location Map</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {weather.coordinates.latitude.toFixed(4)}°, {weather.coordinates.longitude.toFixed(4)}°
+                      </span>
+                    </div>
+                    <iframe
+                      src={getOSMMapUrl() || ""}
+                      className="w-full h-48 lg:h-56"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      title="Farm location map"
+                    />
+                  </div>
+
+                  {/* Farming Alerts */}
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <h3 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-warning" />
+                      AI Farming Alerts
+                    </h3>
+                    <div className="space-y-2">
+                      {weather.farmingAlerts.length > 0 ? (
+                        weather.farmingAlerts.map((alert, index) => (
+                          <div
+                            key={index}
+                            className={`p-3 rounded-lg border ${
+                              alert.type === "warning"
+                                ? "bg-warning/10 border-warning/30"
+                                : alert.type === "success"
+                                ? "bg-success/10 border-success/30"
+                                : "bg-accent/10 border-accent/30"
+                            }`}
+                          >
+                            <h4 className="font-medium text-foreground text-sm">{alert.title}</h4>
+                            <p className="text-xs text-muted-foreground mt-1">{alert.message}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-sm">No specific alerts for your area today.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
