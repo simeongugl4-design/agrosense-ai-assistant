@@ -53,8 +53,9 @@ const cropOptions = [
 
 function getGuestId() {
   let id = localStorage.getItem("agrosense_guest_id");
-  if (!id) {
-    id = `guest-${Date.now()}`;
+  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)) {
+    // Generate a valid UUID v4 for guest users
+    id = crypto.randomUUID();
     localStorage.setItem("agrosense_guest_id", id);
   }
   return id;
@@ -75,8 +76,8 @@ export default function Marketplace() {
   const [nameSet, setNameSet] = useState(() => !!localStorage.getItem("agrosense_chat_name"));
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [newListing, setNewListing] = useState({
-    title: "", description: "", crop_type: "", quantity: "", unit: "kg",
-    price_per_unit: "", location: "", listing_type: "sell", contact_phone: "",
+    title: "", description: "", crop_type: "", quantity: "50", unit: "kg",
+    price_per_unit: "100", location: "", listing_type: "sell", contact_phone: "",
   });
   const [isCreating, setIsCreating] = useState(false);
 
@@ -143,7 +144,7 @@ export default function Marketplace() {
     } else {
       toast({ title: "Listing created! 🛒" });
       setIsDialogOpen(false);
-      setNewListing({ title: "", description: "", crop_type: "", quantity: "", unit: "kg", price_per_unit: "", location: "", listing_type: "sell", contact_phone: "" });
+      setNewListing({ title: "", description: "", crop_type: "", quantity: "50", unit: "kg", price_per_unit: "100", location: "", listing_type: "sell", contact_phone: "" });
       fetchListings();
     }
   };

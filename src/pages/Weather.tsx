@@ -31,6 +31,15 @@ export default function Weather() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("agrosense_recent_weather") || "[]"); } catch { return []; }
+  });
+
+  const addRecentSearch = (loc: string) => {
+    const updated = [loc, ...recentSearches.filter(s => s !== loc)].slice(0, 8);
+    setRecentSearches(updated);
+    localStorage.setItem("agrosense_recent_weather", JSON.stringify(updated));
+  };
 
   // Autocomplete location search - works for villages, towns, cities
   const handleLocationChange = (value: string) => {
@@ -77,8 +86,10 @@ export default function Weather() {
           // Use coordinates directly
           setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
           setIsLoading(true);
-          const data = await getWeatherData(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          const locStr = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          const data = await getWeatherData(locStr);
           setWeather(data);
+          addRecentSearch(locStr);
         } catch (error) {
           toast({ variant: "destructive", title: "Failed to get weather for your location" });
         } finally {
@@ -103,6 +114,7 @@ export default function Weather() {
     try {
       const data = await getWeatherData(loc.trim());
       setWeather(data);
+      addRecentSearch(loc.trim());
     } catch (error) {
       toast({ variant: "destructive", title: "Weather Fetch Failed", description: error instanceof Error ? error.message : "Please try again." });
     } finally {
@@ -196,6 +208,27 @@ export default function Weather() {
               <p className="text-sm text-muted-foreground max-w-md mb-4">
                 Get real-time weather for any village, town, or city. Type to search — our system covers every corner of the earth.
               </p>
+
+              {/* Recent Searches */}
+              {recentSearches.length > 0 && (
+                <div className="mb-6 w-full max-w-lg">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-center gap-1">
+                    <Calendar className="w-3 h-3" /> Recent Searches
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {recentSearches.map(place => (
+                      <button
+                        key={place}
+                        onClick={() => { setLocation(place); handleSearchWithLocation(place); }}
+                        className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs text-foreground hover:bg-primary/20 transition-all"
+                      >
+                        🕐 {place}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2 justify-center">
                 {["Kibera, Kenya", "Ludhiana, India", "Kumasi, Ghana", "São Paulo, Brazil", "Iowa, USA"].map(place => (
                   <button
