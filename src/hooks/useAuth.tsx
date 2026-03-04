@@ -1,10 +1,51 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+interface AuthUser {
+  id: string;
+  email?: string | null;
+  user_metadata?: {
+    full_name?: string | null;
+  };
+}
+
+interface AuthSession {
+  user: AuthUser;
+  access_token?: string;
+  refresh_token?: string;
+}
+
+interface AuthError {
+  message: string;
+}
+
+interface AuthSubscription {
+  unsubscribe: () => void;
+}
+
+interface SupabaseLikeAuthClient {
+  onAuthStateChange: (
+    callback: (event: string, session: AuthSession | null) => void,
+  ) => { data: { subscription: AuthSubscription } };
+  getSession: () => Promise<{ data: { session: AuthSession | null } }>;
+  signUp: (params: {
+    email: string;
+    password: string;
+    options?: {
+      emailRedirectTo?: string;
+      data?: Record<string, unknown>;
+    };
+  }) => Promise<{ error: AuthError | null }>;
+  signInWithPassword: (params: {
+    email: string;
+    password: string;
+  }) => Promise<{ error: AuthError | null }>;
+  signOut: () => Promise<unknown>;
+}
+
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: AuthSession | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -12,26 +53,23 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const authClient = supabase.auth as unknown as SupabaseLikeAuthClient;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const { data: { subscription } } = authClient.onAuthStateChange((_, nextSession) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setLoading(false);
+    });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    authClient.getSession().then(({ data: { session: nextSession } }) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
     });
 
@@ -40,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
+    const { error } = await authClient.signUp({
       email,
       password,
       options: {
@@ -50,19 +88,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
+
     return { error: error ? new Error(error.message) : null };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await authClient.signInWithPassword({ email, password });
     return { error: error ? new Error(error.message) : null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await authClient.signOut();
   };
 
   return (
@@ -79,3 +115,4 @@ export function useAuth() {
   }
   return context;
 }
+

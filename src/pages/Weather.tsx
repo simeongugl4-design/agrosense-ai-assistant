@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
-import { 
+import {
   Cloud, Sun, CloudRain, Droplets, Wind, Thermometer,
   AlertTriangle, Calendar, Sprout, Loader2, Search,
   CloudSnow, CloudLightning, CloudFog, MapPin, Navigation, Globe,
@@ -11,6 +11,25 @@ import { Input } from "@/components/ui/input";
 import { getWeatherData } from "@/lib/ai-service";
 import type { WeatherData } from "@/lib/ai-service";
 import { toast } from "@/hooks/use-toast";
+
+interface LocationSuggestion {
+  place_id: number;
+  lat: string;
+  lon: string;
+  display_name: string;
+  name?: string;
+  type?: string;
+  addresstype?: string;
+  address?: {
+    village?: string;
+    town?: string;
+    city?: string;
+    county?: string;
+    state?: string;
+    region?: string;
+    country?: string;
+  };
+}
 
 function getWeatherIcon(code: number) {
   if (code === 0 || code === 1) return Sun;
@@ -23,74 +42,106 @@ function getWeatherIcon(code: number) {
   return Cloud;
 }
 
+const formatSuggestion = (suggestion: LocationSuggestion) => {
+  const address = suggestion.address || {};
+  const title = suggestion.name || address.village || address.town || address.city || address.county || address.state || suggestion.display_name.split(",")[0];
+  const subtitleParts = [address.county, address.state, address.region, address.country]
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .filter((value) => value !== title);
+
+  return {
+    title,
+    subtitle: subtitleParts.join(", ") || suggestion.addresstype || suggestion.type || suggestion.display_name,
+  };
+};
+
 export default function Weather() {
   const [location, setLocation] = useState("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("agrosense_recent_weather") || "[]"); } catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem("agrosense_recent_weather") || "[]");
+    } catch {
+      return [];
+    }
   });
 
   const addRecentSearch = (loc: string) => {
-    const updated = [loc, ...recentSearches.filter(s => s !== loc)].slice(0, 8);
+    const updated = [loc, ...recentSearches.filter((search) => search !== loc)].slice(0, 8);
     setRecentSearches(updated);
     localStorage.setItem("agrosense_recent_weather", JSON.stringify(updated));
   };
 
-  // Autocomplete location search - works for villages, towns, cities
   const handleLocationChange = (value: string) => {
     setLocation(value);
     if (searchTimeout) clearTimeout(searchTimeout);
-    if (value.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
-    
+
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     const timeout = setTimeout(async () => {
       try {
-        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(value)}&count=8&language=en`);
-        const data = await res.json();
-        if (data.results) {
-          setSuggestions(data.results);
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&q=${encodeURIComponent(value.trim())}`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          },
+        );
+
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setSuggestions(data);
           setShowSuggestions(true);
         } else {
           setSuggestions([]);
+          setShowSuggestions(false);
         }
-      } catch { setSuggestions([]); }
+      } catch {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
     }, 300);
+
     setSearchTimeout(timeout);
   };
 
-  const selectSuggestion = (suggestion: any) => {
-    const name = `${suggestion.name}${suggestion.admin1 ? `, ${suggestion.admin1}` : ''}, ${suggestion.country}`;
-    setLocation(name);
+  const selectSuggestion = (suggestion: LocationSuggestion) => {
+    const nextLocation = suggestion.display_name;
+    setLocation(nextLocation);
     setShowSuggestions(false);
     setSuggestions([]);
-    handleSearchWithLocation(name);
+    void handleSearchWithLocation(nextLocation);
   };
 
-  // Get current location
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast({ variant: "destructive", title: "Geolocation not supported" });
       return;
     }
+
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        const locStr = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+        setLocation(locStr);
+        setIsLoading(true);
+
         try {
-          const { latitude, longitude } = position.coords;
-          // Reverse geocode
-          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${latitude.toFixed(2)},${longitude.toFixed(2)}&count=1`);
-          // Use coordinates directly
-          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-          setIsLoading(true);
-          const locStr = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
           const data = await getWeatherData(locStr);
           setWeather(data);
-          addRecentSearch(locStr);
-        } catch (error) {
+          addRecentSearch(data.location || locStr);
+        } catch {
           toast({ variant: "destructive", title: "Failed to get weather for your location" });
         } finally {
           setGeoLoading(false);
@@ -99,8 +150,12 @@ export default function Weather() {
       },
       () => {
         setGeoLoading(false);
-        toast({ variant: "destructive", title: "Location access denied", description: "Please enable location access or search manually" });
-      }
+        toast({
+          variant: "destructive",
+          title: "Location access denied",
+          description: "Please enable location access or search manually",
+        });
+      },
     );
   };
 
@@ -109,34 +164,34 @@ export default function Weather() {
       toast({ variant: "destructive", title: "Please enter a location" });
       return;
     }
+
     setIsLoading(true);
     setShowSuggestions(false);
+
     try {
       const data = await getWeatherData(loc.trim());
       setWeather(data);
-      addRecentSearch(loc.trim());
+      setLocation(data.location || loc.trim());
+      addRecentSearch(data.location || loc.trim());
     } catch (error) {
-      toast({ variant: "destructive", title: "Weather Fetch Failed", description: error instanceof Error ? error.message : "Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Weather Fetch Failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSearch = () => handleSearchWithLocation(location);
+  const handleSearch = () => void handleSearchWithLocation(location);
 
-  // Google Maps embed URL
-  const getMapUrl = () => {
-    if (!weather?.coordinates) return null;
-    const { latitude, longitude } = weather.coordinates;
-    return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${latitude},${longitude}&zoom=12&maptype=satellite`;
-  };
-
-  // OpenStreetMap fallback (no API key needed)
   const getOSMMapUrl = () => {
     if (!weather?.coordinates) return null;
     const { latitude, longitude } = weather.coordinates;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude-0.05},${latitude-0.05},${longitude+0.05},${latitude+0.05}&layer=mapnik&marker=${latitude},${longitude}`;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.05},${latitude - 0.05},${longitude + 0.05},${latitude + 0.05}&layer=mapnik&marker=${latitude},${longitude}`;
   };
+
 
   return (
     <div className="min-h-screen bg-background">
