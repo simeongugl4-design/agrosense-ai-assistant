@@ -219,22 +219,23 @@ export default function Weather() {
               {/* Autocomplete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto">
-                  {suggestions.map((s, i) => (
-                    <button
-                      key={i}
-                      className="w-full text-left px-4 py-3 hover:bg-muted/50 flex items-center gap-3 transition-colors border-b border-border/50 last:border-0"
-                      onMouseDown={() => selectSuggestion(s)}
-                    >
-                      <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{s.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {s.admin1 && `${s.admin1}, `}{s.admin2 && `${s.admin2}, `}{s.country}
-                          {s.population && ` · Pop: ${s.population.toLocaleString()}`}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                  {suggestions.map((suggestion) => {
+                    const formatted = formatSuggestion(suggestion);
+
+                    return (
+                      <button
+                        key={suggestion.place_id}
+                        className="w-full text-left px-4 py-3 hover:bg-muted/50 flex items-center gap-3 transition-colors border-b border-border/50 last:border-0"
+                        onMouseDown={() => selectSuggestion(suggestion)}
+                      >
+                        <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{formatted.title}</p>
+                          <p className="text-xs text-muted-foreground">{formatted.subtitle}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
