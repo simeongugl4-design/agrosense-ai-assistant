@@ -10,6 +10,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { LanguageSelector } from "@/components/dashboard/LanguageSelector";
 import { COUNTRY_LANGUAGES } from "@/lib/language-data";
 import ReactMarkdown from "react-markdown";
+import { useDashboardTranslations } from "@/hooks/useDashboardTranslations";
 
 interface Message {
   id: string;
@@ -140,99 +141,52 @@ const getVoiceLocale = (language: string, country: string) => {
   const fallbackCountryCode = COUNTRY_LANGUAGES.find((entry) => entry.country === country)?.code || "US";
   const normalizedLanguage = language.toLowerCase();
 
-  if (normalizedLanguage.includes("tok pisin") || normalizedLanguage.includes("hiri motu")) {
-    return `en-${fallbackCountryCode}`;
-  }
+  if (normalizedLanguage.includes("tok pisin") || normalizedLanguage.includes("hiri motu")) return `en-${fallbackCountryCode}`;
 
-  const baseLanguage = normalizedLanguage
-    .replace(/[^a-z\s-]/g, "")
-    .split(/[\s-]+/)
-    .find(Boolean)
-    ?.slice(0, 2);
-
-  return baseLanguage
-    ? `${baseLanguage}-${fallbackCountryCode}`
-    : `en-${fallbackCountryCode}`;
+  const baseLanguage = normalizedLanguage.replace(/[^a-z\s-]/g, "").split(/[\s-]+/).find(Boolean)?.slice(0, 2);
+  return baseLanguage ? `${baseLanguage}-${fallbackCountryCode}` : `en-${fallbackCountryCode}`;
 };
-
-const getWelcomeMessage = (language: string, country: string, voiceLocale: string) =>
-  `Welcome! 🌾 I'm your AI Agricultural Assistant.\n\n🌍 **Country**: ${country || "Not set"}\n🗣️ **Response language**: ${language || "English"}\n🎙️ **Voice input locale**: ${voiceLocale}\n\nAsk about crops, pests, irrigation, soil health, fertilizer, weather, or farm markets.`;
 
 export default function AIAssistant() {
   const { selectedLanguage, selectedCountry } = useLanguage();
-  const voiceLocale = useMemo(
-    () => getVoiceLocale(selectedLanguage || "English", selectedCountry || ""),
-    [selectedCountry, selectedLanguage],
-  );
+  const { copy, format } = useDashboardTranslations();
+  const voiceLocale = useMemo(() => getVoiceLocale(selectedLanguage || "English", selectedCountry || ""), [selectedCountry, selectedLanguage]);
+  const welcomeMessage = useMemo(() => format(copy.aiAssistant.welcome, {
+    country: selectedCountry || copy.common.notSet,
+    language: selectedLanguage || "English",
+    voiceLocale,
+  }), [copy.aiAssistant.welcome, copy.common.notSet, format, selectedCountry, selectedLanguage, voiceLocale]);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: getWelcomeMessage(selectedLanguage || "English", selectedCountry || "", voiceLocale),
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([{ id: "1", role: "assistant", content: welcomeMessage, timestamp: new Date() }]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const {
-    isListening,
-    isSupported,
-    toggleListening,
-    interimTranscript,
-    error: voiceError,
-  } = useVoiceInput({
+  const { isListening, isSupported, toggleListening, interimTranscript, error: voiceError } = useVoiceInput({
     language: voiceLocale,
     onResult: (transcript) => setInput(transcript.trim()),
   });
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    setMessages([
-      {
-        id: "1",
-        role: "assistant",
-        content: getWelcomeMessage(selectedLanguage || "English", selectedCountry || "", voiceLocale),
-        timestamp: new Date(),
-      },
-    ]);
-  }, [selectedLanguage, selectedCountry, voiceLocale]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { setMessages([{ id: "1", role: "assistant", content: welcomeMessage, timestamp: new Date() }]); }, [welcomeMessage]);
 
   useEffect(() => {
     if (!voiceError) return;
-    toast({
-      variant: "destructive",
-      title: "Voice input error",
-      description: voiceError,
-    });
-  }, [voiceError]);
+    toast({ variant: "destructive", title: copy.aiAssistant.voiceInputError, description: voiceError });
+  }, [copy.aiAssistant.voiceInputError, voiceError]);
 
   const handleSend = useCallback(async (textToSend?: string) => {
     const messageText = (textToSend || input).trim();
     if (!messageText || isTyping) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: messageText,
-      timestamp: new Date(),
-    };
-
+    const userMessage: Message = { id: Date.now().toString(), role: "user", content: messageText, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
 
     let assistantContent = "";
     const assistantId = (Date.now() + 1).toString();
-    setMessages((prev) => [
-      ...prev,
-      { id: assistantId, role: "assistant", content: "", timestamp: new Date() },
-    ]);
+    setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "", timestamp: new Date() }]);
 
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`, {
@@ -242,10 +196,7 @@ export default function AIAssistant() {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: messages
-            .filter((message) => message.id !== "1")
-            .concat(userMessage)
-            .map((message) => ({ role: message.role, content: message.content })),
+          messages: messages.filter((message) => message.id !== "1").concat(userMessage).map((message) => ({ role: message.role, content: message.content })),
           language: selectedLanguage,
           country: selectedCountry,
         }),
@@ -253,13 +204,11 @@ export default function AIAssistant() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to connect to AI");
+        throw new Error(errorData.error || copy.aiAssistant.failedConnect);
       }
 
       const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No AI response body received");
-      }
+      if (!reader) throw new Error(copy.aiAssistant.noBody);
 
       const decoder = new TextDecoder();
       let buffer = "";
@@ -285,11 +234,7 @@ export default function AIAssistant() {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               assistantContent += content;
-              setMessages((prev) =>
-                prev.map((message) =>
-                  message.id === assistantId ? { ...message, content: assistantContent } : message,
-                ),
-              );
+              setMessages((prev) => prev.map((message) => message.id === assistantId ? { ...message, content: assistantContent } : message));
             }
           } catch {
             buffer = `${line}\n${buffer}`;
@@ -299,99 +244,65 @@ export default function AIAssistant() {
       }
     } catch (error) {
       console.error(error);
-      toast({
-        variant: "destructive",
-        title: "AI Error",
-        description: error instanceof Error ? error.message : "Failed to get response",
-      });
+      toast({ variant: "destructive", title: copy.aiAssistant.aiError, description: error instanceof Error ? error.message : copy.aiAssistant.failedResponse });
       setMessages((prev) => prev.filter((message) => message.id !== assistantId));
     } finally {
       setIsTyping(false);
     }
-  }, [input, isTyping, messages, selectedCountry, selectedLanguage]);
+  }, [copy.aiAssistant.aiError, copy.aiAssistant.failedConnect, copy.aiAssistant.failedResponse, copy.aiAssistant.noBody, input, isTyping, messages, selectedCountry, selectedLanguage]);
 
   const currentSuggestions = suggestedQuestions[selectedLanguage] || suggestedQuestions.English;
-  const inputPlaceholder = isListening
-    ? `Listening in ${selectedLanguage || "your language"}...`
-    : `Ask your farming question in ${selectedLanguage || "English"}...`;
+  const inputPlaceholder = isListening ? format(copy.aiAssistant.listening, { language: selectedLanguage || "your language" }) : format(copy.aiAssistant.askPlaceholder, { language: selectedLanguage || "English" });
 
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="lg:ml-64 h-screen flex flex-col">
-        <Header title="AI Agricultural Assistant" subtitle={`Speaking in ${selectedLanguage || "English"}`} />
+        <Header title={copy.aiAssistant.title} subtitle={format(copy.aiAssistant.subtitle, { language: selectedLanguage || "English" })} />
         <main className="flex-1 flex flex-col p-4 lg:p-6 overflow-hidden">
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <LanguageSelector />
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
               <Languages className="w-3.5 h-3.5 text-primary" />
-              Replies in <span className="font-medium text-foreground">{selectedLanguage || "English"}</span>
+              {copy.aiAssistant.repliesIn} <span className="font-medium text-foreground">{selectedLanguage || "English"}</span>
               <span className="text-border">•</span>
-              Voice locale <span className="font-medium text-foreground">{voiceLocale}</span>
+              {copy.aiAssistant.voiceLocale} <span className="font-medium text-foreground">{voiceLocale}</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto mb-4 space-y-4">
             {messages.map((message) => (
               <div key={message.id} className={`flex gap-2 lg:gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                {message.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-4 h-4 text-primary-foreground" />
-                  </div>
-                )}
+                {message.role === "assistant" && <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-primary-foreground" /></div>}
                 <div className={`max-w-[85%] lg:max-w-2xl p-3 lg:p-4 rounded-2xl ${message.role === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-card border border-border rounded-tl-sm"}`}>
                   {message.content ? (
                     <div className="prose prose-sm max-w-none text-sm leading-relaxed">
-                      <ReactMarkdown
-                        components={{
-                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                          ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
-                          ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
-                          li: ({ children }) => <li className="mb-1">{children}</li>,
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
+                      <ReactMarkdown components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
+                        li: ({ children }) => <li className="mb-1">{children}</li>,
+                      }}>{message.content}</ReactMarkdown>
                     </div>
                   ) : (
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Thinking...
-                    </span>
+                    <span className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" />{copy.aiAssistant.thinking}</span>
                   )}
                 </div>
-                {message.role === "user" && (
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-secondary-foreground" />
-                  </div>
-                )}
+                {message.role === "user" && <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0"><User className="w-4 h-4 text-secondary-foreground" /></div>}
               </div>
             ))}
             <div ref={messagesEndRef} />
           </div>
 
-          {isListening && interimTranscript && (
-            <div className="mb-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm animate-pulse">
-              🎙️ {interimTranscript}...
-            </div>
-          )}
+          {isListening && interimTranscript && <div className="mb-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm animate-pulse">🎙️ {interimTranscript}...</div>}
 
           {messages.length <= 2 && (
             <div className="mb-4">
-              <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Tap a farming question to ask instantly
-              </p>
+              <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4" />{copy.aiAssistant.tapQuestion}</p>
               <div className="flex flex-wrap gap-2">
                 {currentSuggestions.map((question) => (
-                  <button
-                    key={question}
-                    onClick={() => handleSend(question)}
-                    className="px-3 py-2 bg-card border border-border rounded-full text-xs text-foreground hover:border-primary/50 transition-all"
-                  >
-                    {question}
-                  </button>
+                  <button key={question} onClick={() => void handleSend(question)} className="px-3 py-2 bg-card border border-border rounded-full text-xs text-foreground hover:border-primary/50 transition-all">{question}</button>
                 ))}
               </div>
             </div>
@@ -399,35 +310,15 @@ export default function AIAssistant() {
 
           <div className="flex gap-2">
             {isSupported && (
-              <Button
-                variant={isListening ? "destructive" : "outline"}
-                size="icon"
-                className={isListening ? "animate-pulse" : ""}
-                onClick={toggleListening}
-              >
+              <Button variant={isListening ? "destructive" : "outline"} size="icon" className={isListening ? "animate-pulse" : ""} onClick={toggleListening}>
                 {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </Button>
             )}
-            <Input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder={inputPlaceholder}
-              className="flex-1"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  handleSend();
-                }
-              }}
-              disabled={isTyping}
-            />
-            <Button onClick={() => handleSend()} disabled={!input.trim() || isTyping}>
-              {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
+            <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder={inputPlaceholder} className="flex-1" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleSend(); } }} disabled={isTyping} />
+            <Button onClick={() => void handleSend()} disabled={!input.trim() || isTyping}>{isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button>
           </div>
         </main>
       </div>
     </div>
   );
 }
-
