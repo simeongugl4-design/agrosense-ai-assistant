@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useDashboardTranslations } from "@/hooks/useDashboardTranslations";
 import { Globe, Check, Search } from "lucide-react";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function LanguageSelector() {
   const { selectedCountry, selectedLanguage, setCountryAndLanguage, allCountries } = useLanguage();
+  const { copy, format } = useDashboardTranslations();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [tempCountry, setTempCountry] = useState("");
@@ -22,13 +24,12 @@ export function LanguageSelector() {
   const filtered = useMemo(() => {
     if (!search) return allCountries;
     const q = search.toLowerCase();
-    return allCountries.filter(c =>
-      c.country.toLowerCase().includes(q) ||
-      c.languages.some(l => l.toLowerCase().includes(q))
+    return allCountries.filter((c) =>
+      c.country.toLowerCase().includes(q) || c.languages.some((l) => l.toLowerCase().includes(q)),
     );
   }, [search, allCountries]);
 
-  const selectedCountryData = allCountries.find(c => c.country === tempCountry);
+  const selectedCountryData = allCountries.find((c) => c.country === tempCountry);
 
   const handleConfirm = () => {
     if (tempCountry && tempLanguage) {
@@ -38,19 +39,22 @@ export function LanguageSelector() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => {
-      setOpen(o);
-      if (o) {
-        setTempCountry(selectedCountry);
-        setTempLanguage(selectedLanguage);
-        setSearch("");
-      }
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setTempCountry(selectedCountry);
+          setTempLanguage(selectedLanguage);
+          setSearch("");
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors text-sm">
           <Globe className="w-4 h-4 text-primary" />
           <span className="text-foreground font-medium">
-            {selectedCountry ? `${selectedCountry} — ${selectedLanguage}` : "Select Country & Language"}
+            {selectedCountry ? `${selectedCountry} — ${selectedLanguage}` : copy.languageSelector.button}
           </span>
         </button>
       </DialogTrigger>
@@ -58,25 +62,24 @@ export function LanguageSelector() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-primary" />
-            Select Your Country & Language
+            {copy.languageSelector.title}
           </DialogTitle>
         </DialogHeader>
 
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search country or language..."
+            placeholder={copy.languageSelector.searchPlaceholder}
             className="pl-10"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {/* Step 1: Select country */}
-        <p className="text-xs font-medium text-muted-foreground mb-1">1. Select your country</p>
+        <p className="text-xs font-medium text-muted-foreground mb-1">{copy.languageSelector.stepCountry}</p>
         <ScrollArea className="h-48 border border-border rounded-lg mb-3">
           <div className="p-1">
-            {filtered.map(c => (
+            {filtered.map((c) => (
               <button
                 key={c.code}
                 onClick={() => {
@@ -84,9 +87,7 @@ export function LanguageSelector() {
                   setTempLanguage(c.languages[0]);
                 }}
                 className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
-                  tempCountry === c.country
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-muted text-foreground"
+                  tempCountry === c.country ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-foreground"
                 }`}
               >
                 <span>{c.country}</span>
@@ -96,14 +97,13 @@ export function LanguageSelector() {
           </div>
         </ScrollArea>
 
-        {/* Step 2: Select language */}
         {selectedCountryData && selectedCountryData.languages.length > 0 && (
           <>
             <p className="text-xs font-medium text-muted-foreground mb-1">
-              2. Select language for {tempCountry}
+              {format(copy.languageSelector.stepLanguage, { country: tempCountry })}
             </p>
             <div className="flex flex-wrap gap-2 mb-4">
-              {selectedCountryData.languages.map(lang => (
+              {selectedCountryData.languages.map((lang) => (
                 <button
                   key={lang}
                   onClick={() => setTempLanguage(lang)}
@@ -123,16 +123,16 @@ export function LanguageSelector() {
         {tempCountry && tempLanguage && (
           <div className="bg-success/10 border border-success/30 rounded-lg p-3 mb-3">
             <p className="text-sm text-foreground">
-              <span className="font-semibold">Selected:</span> {tempCountry} — {tempLanguage}
+              <span className="font-semibold">{copy.languageSelector.selectedLabel}</span> {tempCountry} — {tempLanguage}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              All AI responses and agricultural terms will be in {tempLanguage}
+              {format(copy.languageSelector.summary, { language: tempLanguage })}
             </p>
           </div>
         )}
 
         <Button onClick={handleConfirm} disabled={!tempCountry || !tempLanguage} className="w-full">
-          Confirm Language
+          {copy.languageSelector.confirm}
         </Button>
       </DialogContent>
     </Dialog>
