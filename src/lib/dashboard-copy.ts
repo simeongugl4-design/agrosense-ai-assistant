@@ -288,7 +288,7 @@ export const DASHBOARD_COPY_EN = {
     uploadHint: "JPG, PNG, WEBP (max 10MB)",
     labels: {
       cropType: "Crop Type (optional)",
-      symptoms: "Describe Symptoms (optional)",
+      symptomsLabel: "Describe Symptoms (optional)",
       cropIdentified: "Crop Identified",
       diagnosis: "Diagnosis",
       causedBy: "Caused by",
