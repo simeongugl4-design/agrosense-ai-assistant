@@ -14,7 +14,7 @@ export const formatDashboardText = (
   values: Record<string, string | number | undefined>,
 ) => {
   return Object.entries(values).reduce((result, [key, value]) => {
-    return result.replaceAll(`{${key}}`, String(value ?? ""));
+    return result.split(`{${key}}`).join(String(value ?? ""));
   }, template);
 };
 
