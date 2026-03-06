@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
-import { Layers, Navigation, ZoomIn, ZoomOut } from "lucide-react";
+import { Layers, ZoomIn, ZoomOut } from "lucide-react";
 
 // Fix default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -11,16 +10,6 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-const farmIcon = new L.Icon({
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
 });
 
 type MapLayer = "satellite" | "street" | "terrain";
@@ -43,55 +32,6 @@ const TILE_LAYERS: Record<MapLayer, { url: string; attribution: string; maxZoom:
   },
 };
 
-function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, zoom, { animate: true });
-  }, [center, zoom, map]);
-  return null;
-}
-
-function LiveLocationTracker({ onLocationUpdate }: { onLocationUpdate?: (lat: number, lng: number) => void }) {
-  const map = useMap();
-  const [userPos, setUserPos] = useState<[number, number] | null>(null);
-  const watchRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-
-    watchRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const latlng: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        setUserPos(latlng);
-        onLocationUpdate?.(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
-    );
-
-    return () => {
-      if (watchRef.current !== null) {
-        navigator.geolocation.clearWatch(watchRef.current);
-      }
-    };
-  }, [map, onLocationUpdate]);
-
-  if (!userPos) return null;
-
-  const userIcon = L.divIcon({
-    className: "user-location-marker",
-    html: `<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 8px rgba(59,130,246,0.6);"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-  });
-
-  return (
-    <Marker position={userPos} icon={userIcon}>
-      <Popup>📍 Your current location</Popup>
-    </Marker>
-  );
-}
-
 interface SatelliteMapProps {
   latitude: number;
   longitude: number;
@@ -109,37 +49,105 @@ export function SatelliteMap({
   showControls = true,
   showLiveTracking = true,
 }: SatelliteMapProps) {
+  const mapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [layer, setLayer] = useState<MapLayer>("satellite");
-  const [zoom, setZoom] = useState(13);
-  const center: [number, number] = [latitude, longitude];
-  const tileConfig = TILE_LAYERS[layer];
+  const watchRef = useRef<number | null>(null);
+
+  // Initialize map
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const map = L.map(containerRef.current, {
+      center: [latitude, longitude],
+      zoom: 13,
+      zoomControl: false,
+    });
+
+    const tileConfig = TILE_LAYERS[layer];
+    const tileLayer = L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
+      maxZoom: tileConfig.maxZoom,
+    }).addTo(map);
+
+    const marker = L.marker([latitude, longitude]).addTo(map);
+    marker.bindPopup(
+      `<div style="font-size:13px;font-weight:600">${locationName || "Selected Location"}</div><div style="font-size:11px;color:#666">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>`
+    );
+
+    mapRef.current = map;
+    tileLayerRef.current = tileLayer;
+    markerRef.current = marker;
+
+    // Live GPS tracking
+    if (showLiveTracking && navigator.geolocation) {
+      const userIcon = L.divIcon({
+        className: "user-location-marker",
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 8px rgba(59,130,246,0.6);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+
+      watchRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const latlng: L.LatLngExpression = [pos.coords.latitude, pos.coords.longitude];
+          if (userMarkerRef.current) {
+            userMarkerRef.current.setLatLng(latlng);
+          } else if (mapRef.current) {
+            userMarkerRef.current = L.marker(latlng, { icon: userIcon })
+              .addTo(mapRef.current)
+              .bindPopup("📍 Your current location");
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      );
+    }
+
+    // Resize fix
+    setTimeout(() => map.invalidateSize(), 200);
+
+    return () => {
+      if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
+      map.remove();
+      mapRef.current = null;
+      tileLayerRef.current = null;
+      markerRef.current = null;
+      userMarkerRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update center when coordinates change
+  useEffect(() => {
+    if (!mapRef.current || !markerRef.current) return;
+    mapRef.current.setView([latitude, longitude], 13, { animate: true });
+    markerRef.current.setLatLng([latitude, longitude]);
+    markerRef.current.setPopupContent(
+      `<div style="font-size:13px;font-weight:600">${locationName || "Selected Location"}</div><div style="font-size:11px;color:#666">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>`
+    );
+  }, [latitude, longitude, locationName]);
+
+  // Switch tile layer
+  useEffect(() => {
+    if (!mapRef.current || !tileLayerRef.current) return;
+    const tileConfig = TILE_LAYERS[layer];
+    tileLayerRef.current.setUrl(tileConfig.url);
+  }, [layer]);
 
   const cycleLayer = () => {
     const layers: MapLayer[] = ["satellite", "street", "terrain"];
-    const nextIndex = (layers.indexOf(layer) + 1) % layers.length;
-    setLayer(layers[nextIndex]);
+    setLayer(layers[(layers.indexOf(layer) + 1) % layers.length]);
   };
+
+  const zoomIn = () => mapRef.current?.zoomIn(2);
+  const zoomOut = () => mapRef.current?.zoomOut(2);
 
   return (
     <div className={`relative rounded-xl overflow-hidden border border-border ${height}`}>
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        scrollWheelZoom={true}
-        zoomControl={false}
-        className="w-full h-full z-0"
-        style={{ background: "#1a1a2e" }}
-      >
-        <MapController center={center} zoom={zoom} />
-        <TileLayer url={tileConfig.url} attribution={tileConfig.attribution} maxZoom={tileConfig.maxZoom} />
-        <Marker position={center} icon={farmIcon}>
-          <Popup>
-            <div className="text-sm font-medium">{locationName || "Selected Location"}</div>
-            <div className="text-xs text-gray-500">{latitude.toFixed(4)}°, {longitude.toFixed(4)}°</div>
-          </Popup>
-        </Marker>
-        {showLiveTracking && <LiveLocationTracker />}
-      </MapContainer>
+      <div ref={containerRef} className="w-full h-full" style={{ background: "#1a1a2e" }} />
 
       {showControls && (
         <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-1.5">
@@ -148,24 +156,14 @@ export function SatelliteMap({
             variant="secondary"
             className="w-8 h-8 bg-card/90 backdrop-blur shadow-md"
             onClick={cycleLayer}
-            title={`Switch to ${layer === "satellite" ? "street" : layer === "street" ? "terrain" : "satellite"} view`}
+            title={`Switch view`}
           >
             <Layers className="w-4 h-4" />
           </Button>
-          <Button
-            size="icon"
-            variant="secondary"
-            className="w-8 h-8 bg-card/90 backdrop-blur shadow-md"
-            onClick={() => setZoom((z) => Math.min(z + 2, 19))}
-          >
+          <Button size="icon" variant="secondary" className="w-8 h-8 bg-card/90 backdrop-blur shadow-md" onClick={zoomIn}>
             <ZoomIn className="w-4 h-4" />
           </Button>
-          <Button
-            size="icon"
-            variant="secondary"
-            className="w-8 h-8 bg-card/90 backdrop-blur shadow-md"
-            onClick={() => setZoom((z) => Math.max(z - 2, 3))}
-          >
+          <Button size="icon" variant="secondary" className="w-8 h-8 bg-card/90 backdrop-blur shadow-md" onClick={zoomOut}>
             <ZoomOut className="w-4 h-4" />
           </Button>
         </div>
