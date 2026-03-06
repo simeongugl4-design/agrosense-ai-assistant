@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
+import { SatelliteMap } from "@/components/dashboard/SatelliteMap";
 import {
   Cloud, Sun, CloudRain, Droplets, Wind, Thermometer,
   AlertTriangle, Calendar, Sprout, Loader2, Search,
@@ -184,11 +185,7 @@ export default function Weather() {
 
   const handleSearch = () => void handleSearchWithLocation(location);
 
-  const getOSMMapUrl = () => {
-    if (!weather?.coordinates) return null;
-    const { latitude, longitude } = weather.coordinates;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.05},${latitude - 0.05},${longitude + 0.05},${latitude + 0.05}&layer=mapnik&marker=${latitude},${longitude}`;
-  };
+  // Removed old OSM embed URL helper - using SatelliteMap component now
 
   return (
     <div className="min-h-screen bg-background">
@@ -346,12 +343,12 @@ export default function Weather() {
                         {weather.coordinates.latitude.toFixed(4)}°, {weather.coordinates.longitude.toFixed(4)}°
                       </span>
                     </div>
-                    <iframe
-                      src={getOSMMapUrl() || ""}
-                      className="w-full h-48 lg:h-56"
-                      style={{ border: 0 }}
-                      loading="lazy"
-                      title={copy.weather.mapFrameTitle}
+                    <SatelliteMap
+                      latitude={weather.coordinates.latitude}
+                      longitude={weather.coordinates.longitude}
+                      locationName={weather.location}
+                      height="h-48 lg:h-56"
+                      showLiveTracking={true}
                     />
                   </div>
 
