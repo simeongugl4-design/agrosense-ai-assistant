@@ -212,6 +212,8 @@ export const DASHBOARD_COPY_EN = {
       title: "Search any location worldwide",
       subtitle: "Get real-time weather for any village, town, or city. Type to search — our system covers every corner of the earth.",
       recentSearches: "Recent Searches",
+      pngProvinces: "Papua New Guinea Provinces",
+      popularLocations: "Popular Locations",
     },
     currentWeather: "Current Weather",
     humidity: "Humidity",
