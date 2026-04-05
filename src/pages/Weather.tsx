@@ -272,19 +272,53 @@ export default function Weather() {
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2 justify-center">
-                {["Kibera, Kenya", "Ludhiana, India", "Kumasi, Ghana", "São Paulo, Brazil", "Iowa, USA"].map((place) => (
-                  <button
-                    key={place}
-                    onClick={() => {
-                      setLocation(place);
-                      void handleSearchWithLocation(place);
-                    }}
-                    className="px-3 py-1.5 bg-card border border-border rounded-full text-xs text-foreground hover:border-primary/50 transition-all"
-                  >
-                    📍 {place}
-                  </button>
-                ))}
+              <div className="w-full max-w-2xl">
+                <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-center gap-1">
+                  <MapPin className="w-3 h-3" /> {copy.weather.empty.pngProvinces}
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {[
+                    "Western Province, PNG", "Gulf Province, PNG", "Central Province, PNG",
+                    "National Capital District, PNG", "Milne Bay, PNG", "Oro Province, PNG",
+                    "Southern Highlands, PNG", "Hela Province, PNG", "Enga Province, PNG",
+                    "Western Highlands, PNG", "Jiwaka Province, PNG", "Chimbu Province, PNG",
+                    "Eastern Highlands, PNG", "Morobe Province, PNG", "Madang Province, PNG",
+                    "East Sepik, PNG", "Sandaun Province, PNG", "Manus Province, PNG",
+                    "New Ireland Province, PNG", "East New Britain, PNG", "West New Britain, PNG",
+                    "Autonomous Region of Bougainville, PNG",
+                  ].map((place) => (
+                    <button
+                      key={place}
+                      onClick={() => {
+                        setLocation(place);
+                        void handleSearchWithLocation(place);
+                      }}
+                      className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs text-foreground hover:bg-primary/20 transition-all"
+                    >
+                      📍 {place.replace(", PNG", "")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="w-full max-w-lg mt-4">
+                <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-center gap-1">
+                  <Globe className="w-3 h-3" /> {copy.weather.empty.popularLocations}
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {["Kibera, Kenya", "Ludhiana, India", "Kumasi, Ghana", "São Paulo, Brazil", "Iowa, USA"].map((place) => (
+                    <button
+                      key={place}
+                      onClick={() => {
+                        setLocation(place);
+                        void handleSearchWithLocation(place);
+                      }}
+                      className="px-3 py-1.5 bg-card border border-border rounded-full text-xs text-foreground hover:border-primary/50 transition-all"
+                    >
+                      📍 {place}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
