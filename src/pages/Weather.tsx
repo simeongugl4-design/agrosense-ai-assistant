@@ -6,6 +6,7 @@ import {
   Cloud, Sun, CloudRain, Droplets, Wind, Thermometer,
   AlertTriangle, Calendar, Sprout, Loader2, Search,
   CloudSnow, CloudLightning, CloudFog, MapPin, Navigation, Globe,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
