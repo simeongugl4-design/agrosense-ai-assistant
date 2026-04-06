@@ -60,6 +60,7 @@ const formatSuggestion = (suggestion: LocationSuggestion) => {
 };
 
 export default function Weather() {
+  const [provincesExpanded, setProvincesExpanded] = useState(false);
   const { copy } = useDashboardTranslations();
   const [location, setLocation] = useState("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
