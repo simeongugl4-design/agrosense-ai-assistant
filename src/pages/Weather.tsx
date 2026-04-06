@@ -6,6 +6,7 @@ import {
   Cloud, Sun, CloudRain, Droplets, Wind, Thermometer,
   AlertTriangle, Calendar, Sprout, Loader2, Search,
   CloudSnow, CloudLightning, CloudFog, MapPin, Navigation, Globe,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ const formatSuggestion = (suggestion: LocationSuggestion) => {
 };
 
 export default function Weather() {
+  const [provincesExpanded, setProvincesExpanded] = useState(false);
   const { copy } = useDashboardTranslations();
   const [location, setLocation] = useState("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -273,32 +275,38 @@ export default function Weather() {
               )}
 
               <div className="w-full max-w-2xl">
-                <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-center gap-1">
+                <button
+                  onClick={() => setProvincesExpanded(!provincesExpanded)}
+                  className="text-xs font-medium text-muted-foreground mb-2 flex items-center justify-center gap-1 mx-auto hover:text-foreground transition-colors"
+                >
                   <MapPin className="w-3 h-3" /> {copy.weather.empty.pngProvinces}
-                </p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {[
-                    "Western Province, PNG", "Gulf Province, PNG", "Central Province, PNG",
-                    "National Capital District, PNG", "Milne Bay, PNG", "Oro Province, PNG",
-                    "Southern Highlands, PNG", "Hela Province, PNG", "Enga Province, PNG",
-                    "Western Highlands, PNG", "Jiwaka Province, PNG", "Chimbu Province, PNG",
-                    "Eastern Highlands, PNG", "Morobe Province, PNG", "Madang Province, PNG",
-                    "East Sepik, PNG", "Sandaun Province, PNG", "Manus Province, PNG",
-                    "New Ireland Province, PNG", "East New Britain, PNG", "West New Britain, PNG",
-                    "Autonomous Region of Bougainville, PNG",
-                  ].map((place) => (
-                    <button
-                      key={place}
-                      onClick={() => {
-                        setLocation(place);
-                        void handleSearchWithLocation(place);
-                      }}
-                      className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs text-foreground hover:bg-primary/20 transition-all"
-                    >
-                      📍 {place.replace(", PNG", "")}
-                    </button>
-                  ))}
-                </div>
+                  {provincesExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {provincesExpanded && (
+                  <div className="flex flex-wrap gap-2 justify-center animate-in fade-in slide-in-from-top-2 duration-200">
+                    {[
+                      "Western Province, PNG", "Gulf Province, PNG", "Central Province, PNG",
+                      "National Capital District, PNG", "Milne Bay, PNG", "Oro Province, PNG",
+                      "Southern Highlands, PNG", "Hela Province, PNG", "Enga Province, PNG",
+                      "Western Highlands, PNG", "Jiwaka Province, PNG", "Chimbu Province, PNG",
+                      "Eastern Highlands, PNG", "Morobe Province, PNG", "Madang Province, PNG",
+                      "East Sepik, PNG", "Sandaun Province, PNG", "Manus Province, PNG",
+                      "New Ireland Province, PNG", "East New Britain, PNG", "West New Britain, PNG",
+                      "Autonomous Region of Bougainville, PNG",
+                    ].map((place) => (
+                      <button
+                        key={place}
+                        onClick={() => {
+                          setLocation(place);
+                          void handleSearchWithLocation(place);
+                        }}
+                        className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs text-foreground hover:bg-primary/20 transition-all"
+                      >
+                        📍 {place.replace(", PNG", "")}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="w-full max-w-lg mt-4">
