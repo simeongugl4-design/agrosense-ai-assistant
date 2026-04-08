@@ -51,6 +51,8 @@ export default function Irrigation() {
     { value: "tomato", label: copy.common.cropOptions.tomato },
     { value: "onion", label: copy.common.cropOptions.onion },
     { value: "groundnut", label: copy.common.cropOptions.groundnut },
+    { value: "kaukau", label: copy.common.cropOptions.kaukau },
+    { value: "taro", label: copy.common.cropOptions.taro },
   ];
 
   const stageOptions = [
