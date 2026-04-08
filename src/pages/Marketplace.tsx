@@ -78,6 +78,8 @@ export default function Marketplace() {
     { value: "tea", label: copy.common.cropOptions.tea },
     { value: "cocoa", label: copy.common.cropOptions.cocoa },
     { value: "cassava", label: copy.common.cropOptions.cassava },
+    { value: "kaukau", label: copy.common.cropOptions.kaukau },
+    { value: "taro", label: copy.common.cropOptions.taro },
     { value: "millet", label: copy.common.cropOptions.millet },
     { value: "sorghum", label: copy.common.cropOptions.sorghum },
     { value: "other", label: copy.common.cropOptions.other },

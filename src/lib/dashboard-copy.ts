@@ -25,6 +25,8 @@ export const DASHBOARD_COPY_EN = {
       tea: "Tea",
       cocoa: "Cocoa",
       cassava: "Cassava",
+      kaukau: "Kaukau (Sweet Potato)",
+      taro: "Taro",
       millet: "Millet",
       sorghum: "Sorghum",
       other: "Other",
