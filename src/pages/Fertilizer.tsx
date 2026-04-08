@@ -50,6 +50,8 @@ export default function Fertilizer() {
     { value: "onion", label: copy.common.cropOptions.onion },
     { value: "groundnut", label: copy.common.cropOptions.groundnut },
     { value: "mustard", label: copy.common.cropOptions.mustard },
+    { value: "kaukau", label: copy.common.cropOptions.kaukau },
+    { value: "taro", label: copy.common.cropOptions.taro },
   ];
 
   const stageOptions = [
