@@ -14,6 +14,7 @@ import {
 import {
   ShoppingCart, Plus, MapPin, Phone, Tag, TrendingUp, Loader2,
   Search, Filter, Package, Wheat, MessageCircle, Send, X,
+  ImagePlus, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -96,11 +97,15 @@ export default function Marketplace() {
   const [chatName, setChatName] = useState(() => localStorage.getItem("agrosense_chat_name") || "");
   const [nameSet, setNameSet] = useState(() => !!localStorage.getItem("agrosense_chat_name"));
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [newListing, setNewListing] = useState({
     title: "", description: "", crop_type: "", quantity: "50", unit: "kg",
     price_per_unit: "100", location: "", listing_type: "sell", contact_phone: "",
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => { void fetchListings(); }, []);
 
@@ -131,6 +136,41 @@ export default function Marketplace() {
     setIsLoading(false);
   };
 
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Image too large", description: "Maximum 5MB allowed" });
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+    setIsUploadingImage(true);
+    try {
+      const ext = imageFile.name.split(".").pop();
+      const fileName = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("listing-images").upload(fileName, imageFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("listing-images").getPublicUrl(fileName);
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Image upload error:", error);
+      toast({ variant: "destructive", title: "Failed to upload image" });
+      return null;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const handleCreateListing = async () => {
     if (!newListing.title || !newListing.crop_type || !newListing.quantity || !newListing.price_per_unit) {
       toast({ variant: "destructive", title: copy.marketplace.errors.fillRequired });
@@ -138,6 +178,12 @@ export default function Marketplace() {
     }
     setIsCreating(true);
     const userId = user?.id || getGuestId();
+    
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      imageUrl = await uploadImage();
+    }
+
     const { error } = await supabase.from("marketplace_listings").insert({
       user_id: userId,
       title: newListing.title,
@@ -149,6 +195,7 @@ export default function Marketplace() {
       location: newListing.location || null,
       listing_type: newListing.listing_type,
       contact_phone: newListing.contact_phone || null,
+      image_url: imageUrl,
     });
     setIsCreating(false);
     if (error) {
@@ -158,6 +205,8 @@ export default function Marketplace() {
       toast({ title: copy.marketplace.errors.created });
       setIsDialogOpen(false);
       setNewListing({ title: "", description: "", crop_type: "", quantity: "50", unit: "kg", price_per_unit: "100", location: "", listing_type: "sell", contact_phone: "" });
+      setImageFile(null);
+      setImagePreview(null);
       void fetchListings();
     }
   };
@@ -246,7 +295,7 @@ export default function Marketplace() {
               <button onClick={() => setTab("browse")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === "browse" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>{copy.marketplace.tabs.browse}</button>
               <button onClick={() => setTab("my")} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === "my" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}>{copy.marketplace.tabs.my}</button>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setImageFile(null); setImagePreview(null); } }}>
               <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> {copy.marketplace.newListing}</Button></DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{copy.marketplace.createListing}</DialogTitle></DialogHeader>
@@ -269,6 +318,32 @@ export default function Marketplace() {
                       <SelectContent>{cropOptions.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
+
+                  {/* Image Upload */}
+                  <div className="space-y-2">
+                    <Label>Photo (optional)</Label>
+                    <input type="file" ref={imageInputRef} accept="image/*" className="hidden" onChange={handleImageSelect} />
+                    {imagePreview ? (
+                      <div className="relative rounded-xl overflow-hidden">
+                        <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-xl" />
+                        <button
+                          onClick={() => { setImageFile(null); setImagePreview(null); }}
+                          className="absolute top-2 right-2 bg-destructive text-destructive-foreground w-8 h-8 rounded-lg flex items-center justify-center"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => imageInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                      >
+                        <ImagePlus className="w-8 h-8 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Tap to add a photo</span>
+                      </button>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-2"><Label>{copy.marketplace.labels.quantity}</Label><Input type="number" placeholder={copy.marketplace.placeholders.quantity} value={newListing.quantity} onChange={(e) => setNewListing({ ...newListing, quantity: e.target.value })} /></div>
                     <div className="space-y-2">
@@ -291,8 +366,8 @@ export default function Marketplace() {
                     <div className="space-y-2"><Label>{copy.marketplace.labels.contactPhone}</Label><Input placeholder={copy.marketplace.placeholders.contactPhone} value={newListing.contact_phone} onChange={(e) => setNewListing({ ...newListing, contact_phone: e.target.value })} /></div>
                   </div>
                   <div className="space-y-2"><Label>{copy.marketplace.labels.description}</Label><Textarea placeholder={copy.marketplace.placeholders.description} value={newListing.description} rows={3} onChange={(e) => setNewListing({ ...newListing, description: e.target.value })} /></div>
-                  <Button className="w-full" onClick={handleCreateListing} disabled={isCreating || !newListing.title || !newListing.crop_type || !newListing.quantity || !newListing.price_per_unit}>
-                    {isCreating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{copy.marketplace.buttons.loading}</> : copy.marketplace.buttons.submit}
+                  <Button className="w-full" onClick={handleCreateListing} disabled={isCreating || isUploadingImage || !newListing.title || !newListing.crop_type || !newListing.quantity || !newListing.price_per_unit}>
+                    {isCreating || isUploadingImage ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{isUploadingImage ? "Uploading image..." : copy.marketplace.buttons.loading}</> : copy.marketplace.buttons.submit}
                   </Button>
                 </div>
               </DialogContent>
@@ -321,37 +396,50 @@ export default function Marketplace() {
           ) : displayedListings.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayedListings.map((listing) => (
-                <div key={listing.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md hover:border-primary/30 transition-all">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${listing.listing_type === "sell" ? "bg-success/10" : "bg-accent/10"}`}>
-                        {listing.listing_type === "sell" ? <TrendingUp className="w-5 h-5 text-success" /> : <ShoppingCart className="w-5 h-5 text-accent" />}
-                      </div>
-                      <Badge variant={listing.listing_type === "sell" ? "default" : "secondary"} className="text-xs">
+                <div key={listing.id} className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md hover:border-primary/30 transition-all">
+                  {/* Listing Image */}
+                  {listing.image_url && (
+                    <div className="relative h-40 overflow-hidden">
+                      <img src={listing.image_url} alt={listing.title} className="w-full h-full object-cover" />
+                      <Badge variant={listing.listing_type === "sell" ? "default" : "secondary"} className="absolute top-2 left-2 text-xs">
                         {listing.listing_type === "sell" ? copy.common.listingTypes.selling : copy.common.listingTypes.buying}
                       </Badge>
                     </div>
-                    {listing.status === "sold" && <Badge variant="outline" className="text-muted-foreground">{copy.common.listingTypes.sold}</Badge>}
-                  </div>
-                  <h4 className="font-semibold text-foreground mb-2 line-clamp-1">{listing.title}</h4>
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center gap-2 text-sm"><Wheat className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">{copy.marketplace.labels.crop}</span><span className="font-medium text-foreground capitalize">{listing.crop_type}</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Package className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">{copy.marketplace.labels.qty}</span><span className="font-medium text-foreground">{listing.quantity} {listing.unit}</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Tag className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">{copy.marketplace.labels.price}</span><span className="font-bold text-success">{listing.price_per_unit}/{listing.unit}</span></div>
-                    {listing.location && <div className="flex items-center gap-2 text-sm"><MapPin className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground truncate">{listing.location}</span></div>}
-                  </div>
-                  {listing.description && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{listing.description}</p>}
-                  {listing.contact_phone && <div className="flex items-center gap-2 text-sm mb-3 text-primary"><Phone className="w-4 h-4" /><a href={`tel:${listing.contact_phone}`}>{listing.contact_phone}</a></div>}
-                  <div className="flex items-center justify-between pt-3 border-t border-border">
-                    <span className="text-xs text-muted-foreground">{new Date(listing.created_at).toLocaleDateString()}</span>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setChatOpen(listing.id)}><MessageCircle className="w-3 h-3 mr-1" /> {copy.marketplace.buttons.chat}</Button>
-                      {listing.user_id === myId && listing.status === "active" && (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => handleMarkSold(listing.id)}>{copy.marketplace.buttons.sold}</Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(listing.id)}>{copy.marketplace.buttons.delete}</Button>
-                        </>
-                      )}
+                  )}
+                  <div className="p-5">
+                    {!listing.image_url && (
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${listing.listing_type === "sell" ? "bg-success/10" : "bg-accent/10"}`}>
+                            {listing.listing_type === "sell" ? <TrendingUp className="w-5 h-5 text-success" /> : <ShoppingCart className="w-5 h-5 text-accent" />}
+                          </div>
+                          <Badge variant={listing.listing_type === "sell" ? "default" : "secondary"} className="text-xs">
+                            {listing.listing_type === "sell" ? copy.common.listingTypes.selling : copy.common.listingTypes.buying}
+                          </Badge>
+                        </div>
+                        {listing.status === "sold" && <Badge variant="outline" className="text-muted-foreground">{copy.common.listingTypes.sold}</Badge>}
+                      </div>
+                    )}
+                    <h4 className="font-semibold text-foreground mb-2 line-clamp-1">{listing.title}</h4>
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center gap-2 text-sm"><Wheat className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">{copy.marketplace.labels.crop}</span><span className="font-medium text-foreground capitalize">{listing.crop_type}</span></div>
+                      <div className="flex items-center gap-2 text-sm"><Package className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">{copy.marketplace.labels.qty}</span><span className="font-medium text-foreground">{listing.quantity} {listing.unit}</span></div>
+                      <div className="flex items-center gap-2 text-sm"><Tag className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground">{copy.marketplace.labels.price}</span><span className="font-bold text-success">{listing.price_per_unit}/{listing.unit}</span></div>
+                      {listing.location && <div className="flex items-center gap-2 text-sm"><MapPin className="w-4 h-4 text-muted-foreground" /><span className="text-muted-foreground truncate">{listing.location}</span></div>}
+                    </div>
+                    {listing.description && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{listing.description}</p>}
+                    {listing.contact_phone && <div className="flex items-center gap-2 text-sm mb-3 text-primary"><Phone className="w-4 h-4" /><a href={`tel:${listing.contact_phone}`}>{listing.contact_phone}</a></div>}
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <span className="text-xs text-muted-foreground">{new Date(listing.created_at).toLocaleDateString()}</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setChatOpen(listing.id)}><MessageCircle className="w-3 h-3 mr-1" /> {copy.marketplace.buttons.chat}</Button>
+                        {listing.user_id === myId && listing.status === "active" && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => handleMarkSold(listing.id)}>{copy.marketplace.buttons.sold}</Button>
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(listing.id)}>{copy.marketplace.buttons.delete}</Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

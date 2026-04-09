@@ -11,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sprout, TrendingUp, DollarSign, Calendar, Sparkles, Droplets, Loader2, Clock } from "lucide-react";
+import { Sprout, TrendingUp, DollarSign, Calendar, Sparkles, Droplets, Loader2, Clock, Lightbulb, ArrowRight } from "lucide-react";
 import { getCropRecommendations } from "@/lib/ai-service";
 import { toast } from "@/hooks/use-toast";
 import { useDashboardTranslations } from "@/hooks/useDashboardTranslations";
+import { useNavigate } from "react-router-dom";
 
 interface CropRecommendation {
   crop: string;
@@ -30,12 +31,14 @@ interface CropRecommendation {
 
 export default function CropAdvisor() {
   const { copy, format } = useDashboardTranslations();
+  const navigate = useNavigate();
   const [location, setLocation] = useState("");
   const [soilType, setSoilType] = useState("");
   const [season, setSeason] = useState("");
   const [farmSize, setFarmSize] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
+  const [selectedCrop, setSelectedCrop] = useState<CropRecommendation | null>(null);
 
   const soilTypes = [
     { value: "clay", label: copy.common.soilTypes.clay },
@@ -67,6 +70,7 @@ export default function CropAdvisor() {
 
     setIsLoading(true);
     setRecommendations([]);
+    setSelectedCrop(null);
 
     try {
       const result = await getCropRecommendations({
@@ -91,15 +95,17 @@ export default function CropAdvisor() {
 
   const getWaterColor = (needs: string) => {
     switch (needs?.toLowerCase()) {
-      case "high":
-        return "text-accent";
-      case "medium":
-        return "text-warning";
-      case "low":
-        return "text-success";
-      default:
-        return "text-muted-foreground";
+      case "high": return "text-accent";
+      case "medium": return "text-warning";
+      case "low": return "text-success";
+      default: return "text-muted-foreground";
     }
+  };
+
+  const getSuitabilityColor = (score: number) => {
+    if (score >= 80) return "bg-success text-success-foreground";
+    if (score >= 60) return "bg-warning text-warning-foreground";
+    return "bg-muted text-muted-foreground";
   };
 
   return (
@@ -117,65 +123,29 @@ export default function CropAdvisor() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="location">{copy.cropAdvisor.labels.location}</Label>
-                <Input
-                  id="location"
-                  placeholder={copy.cropAdvisor.placeholders.location}
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                />
+                <Input id="location" placeholder={copy.cropAdvisor.placeholders.location} value={location} onChange={(e) => setLocation(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="soil">{copy.cropAdvisor.labels.soilType}</Label>
                 <Select value={soilType} onValueChange={setSoilType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={copy.cropAdvisor.placeholders.soilType} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {soilTypes.map((soil) => (
-                      <SelectItem key={soil.value} value={soil.value}>
-                        {soil.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger><SelectValue placeholder={copy.cropAdvisor.placeholders.soilType} /></SelectTrigger>
+                  <SelectContent>{soilTypes.map((soil) => <SelectItem key={soil.value} value={soil.value}>{soil.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="season">{copy.cropAdvisor.labels.season}</Label>
                 <Select value={season} onValueChange={setSeason}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={copy.cropAdvisor.placeholders.season} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {seasons.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger><SelectValue placeholder={copy.cropAdvisor.placeholders.season} /></SelectTrigger>
+                  <SelectContent>{seasons.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="farmSize">{copy.cropAdvisor.labels.farmSize}</Label>
-                <Input
-                  id="farmSize"
-                  placeholder={copy.cropAdvisor.placeholders.farmSize}
-                  value={farmSize}
-                  onChange={(e) => setFarmSize(e.target.value)}
-                />
+                <Input id="farmSize" placeholder={copy.cropAdvisor.placeholders.farmSize} value={farmSize} onChange={(e) => setFarmSize(e.target.value)} />
               </div>
             </div>
             <Button className="mt-6" size="lg" onClick={handleGetRecommendations} disabled={isLoading || !location || !soilType || !season}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {copy.cropAdvisor.buttons.loading}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {copy.cropAdvisor.buttons.submit}
-                </>
-              )}
+              {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{copy.cropAdvisor.buttons.loading}</> : <><Sparkles className="w-4 h-4 mr-2" />{copy.cropAdvisor.buttons.submit}</>}
             </Button>
           </div>
 
@@ -197,8 +167,9 @@ export default function CropAdvisor() {
                 {recommendations.map((rec, index) => (
                   <div
                     key={rec.crop}
-                    className="bg-card rounded-xl border border-border p-6 hover:shadow-lg hover:border-primary/30 transition-all animate-fade-in"
+                    className={`bg-card rounded-xl border p-6 hover:shadow-lg transition-all animate-fade-in cursor-pointer ${selectedCrop?.crop === rec.crop ? "border-primary shadow-lg" : "border-border hover:border-primary/30"}`}
                     style={{ animationDelay: `${index * 0.1}s` }}
+                    onClick={() => setSelectedCrop(selectedCrop?.crop === rec.crop ? null : rec)}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -207,7 +178,7 @@ export default function CropAdvisor() {
                         </div>
                         <div>
                           <h4 className="font-semibold text-foreground">{rec.crop}</h4>
-                          <span className="text-sm text-success font-medium">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getSuitabilityColor(rec.suitability)}`}>
                             {format(copy.cropAdvisor.suitabilityMatch, { value: rec.suitability })}
                           </span>
                         </div>
@@ -245,13 +216,37 @@ export default function CropAdvisor() {
                     <div className="pt-4 border-t border-border">
                       <p className="text-sm text-muted-foreground leading-relaxed">{rec.tips}</p>
                     </div>
-
-                    <Button variant="outline" className="w-full mt-4">
-                      {copy.cropAdvisor.buttons.viewPlan}
-                    </Button>
                   </div>
                 ))}
               </div>
+
+              {/* Follow-Up Action Suggestions */}
+              {selectedCrop && (
+                <div className="bg-card rounded-xl border border-primary/30 p-6 animate-fade-in">
+                  <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-secondary" />
+                    Next Steps for {selectedCrop.crop}
+                  </h4>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <button onClick={() => navigate("/dashboard/fertilizer")} className="p-4 rounded-xl bg-warning/5 border border-warning/20 hover:border-warning/40 transition-all text-left group">
+                      <p className="text-sm font-medium text-foreground flex items-center gap-2">Get Fertilizer Plan <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
+                      <p className="text-xs text-muted-foreground mt-1">AI-optimized nutrients for {selectedCrop.crop}</p>
+                    </button>
+                    <button onClick={() => navigate("/dashboard/irrigation")} className="p-4 rounded-xl bg-accent/5 border border-accent/20 hover:border-accent/40 transition-all text-left group">
+                      <p className="text-sm font-medium text-foreground flex items-center gap-2">Plan Irrigation <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
+                      <p className="text-xs text-muted-foreground mt-1">Water: {selectedCrop.waterNeeds} needs</p>
+                    </button>
+                    <button onClick={() => navigate("/dashboard/disease")} className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 hover:border-destructive/40 transition-all text-left group">
+                      <p className="text-sm font-medium text-foreground flex items-center gap-2">Disease Scanner <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
+                      <p className="text-xs text-muted-foreground mt-1">Protect your {selectedCrop.crop} crop</p>
+                    </button>
+                    <button onClick={() => navigate("/dashboard/calendar")} className="p-4 rounded-xl bg-primary/5 border border-primary/20 hover:border-primary/40 transition-all text-left group">
+                      <p className="text-sm font-medium text-foreground flex items-center gap-2">Schedule Sowing <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
+                      <p className="text-xs text-muted-foreground mt-1">Best window: {selectedCrop.sowingWindow}</p>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
