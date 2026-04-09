@@ -32,6 +32,8 @@ import {
   Loader2,
   AlertTriangle,
   Wheat,
+  Zap,
+  ListPlus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,13 +60,92 @@ const priorityColors: Record<string, string> = {
   low: "border-l-success bg-success/5",
 };
 
+interface CropTemplate {
+  name: string;
+  crop: string;
+  events: Array<{
+    title: string;
+    event_type: string;
+    dayOffset: number;
+    priority: string;
+    description: string;
+  }>;
+}
+
+const CROP_TEMPLATES: CropTemplate[] = [
+  {
+    name: "Kaukau (Sweet Potato) Cycle",
+    crop: "Kaukau",
+    events: [
+      { title: "Prepare mounds/beds", event_type: "general", dayOffset: 0, priority: "high", description: "Clear land, prepare raised mounds or beds for planting" },
+      { title: "Plant vine cuttings", event_type: "sowing", dayOffset: 7, priority: "high", description: "Plant 30cm vine cuttings at 30cm spacing" },
+      { title: "First watering", event_type: "irrigation", dayOffset: 8, priority: "high", description: "Water thoroughly after planting" },
+      { title: "Apply organic fertilizer", event_type: "fertilizer", dayOffset: 21, priority: "medium", description: "Apply compost or organic fertilizer around plants" },
+      { title: "Weed & check for pests", event_type: "spraying", dayOffset: 30, priority: "medium", description: "Remove weeds and check for sweet potato weevil" },
+      { title: "Second fertilizer application", event_type: "fertilizer", dayOffset: 60, priority: "medium", description: "Side-dress with fertilizer for tuber development" },
+      { title: "Reduce watering", event_type: "irrigation", dayOffset: 90, priority: "low", description: "Reduce irrigation as tubers mature" },
+      { title: "Check harvest readiness", event_type: "general", dayOffset: 120, priority: "high", description: "Check leaves yellowing, test dig a tuber" },
+      { title: "Harvest kaukau", event_type: "harvest", dayOffset: 150, priority: "high", description: "Harvest tubers carefully to avoid damage" },
+    ],
+  },
+  {
+    name: "Taro Growing Cycle",
+    crop: "Taro",
+    events: [
+      { title: "Prepare wet beds", event_type: "general", dayOffset: 0, priority: "high", description: "Prepare waterlogged or marshy beds for taro" },
+      { title: "Plant taro corms", event_type: "sowing", dayOffset: 3, priority: "high", description: "Plant taro corms 8-10cm deep, 60cm apart" },
+      { title: "Initial flooding", event_type: "irrigation", dayOffset: 4, priority: "high", description: "Flood beds to 5cm above soil level" },
+      { title: "First fertilizer", event_type: "fertilizer", dayOffset: 30, priority: "medium", description: "Apply nitrogen-rich fertilizer" },
+      { title: "Pest inspection", event_type: "spraying", dayOffset: 45, priority: "medium", description: "Check for taro beetle and leaf blight" },
+      { title: "Second fertilizer", event_type: "fertilizer", dayOffset: 75, priority: "medium", description: "Apply balanced NPK fertilizer" },
+      { title: "Maintain water level", event_type: "irrigation", dayOffset: 90, priority: "medium", description: "Ensure consistent water levels" },
+      { title: "Drain for harvest", event_type: "irrigation", dayOffset: 240, priority: "high", description: "Drain fields 2 weeks before harvest" },
+      { title: "Harvest taro", event_type: "harvest", dayOffset: 270, priority: "high", description: "Harvest when leaves yellow and wilt" },
+    ],
+  },
+  {
+    name: "Rice Paddy Cycle",
+    crop: "Rice",
+    events: [
+      { title: "Prepare nursery beds", event_type: "general", dayOffset: 0, priority: "high", description: "Prepare seedbed, soak and sow rice seeds" },
+      { title: "Transplant seedlings", event_type: "sowing", dayOffset: 25, priority: "high", description: "Transplant 25-day old seedlings to main field" },
+      { title: "First irrigation", event_type: "irrigation", dayOffset: 26, priority: "high", description: "Flood paddy to 5cm depth" },
+      { title: "Basal fertilizer", event_type: "fertilizer", dayOffset: 28, priority: "high", description: "Apply NPK basal dose" },
+      { title: "Weed management", event_type: "spraying", dayOffset: 35, priority: "medium", description: "Manual or chemical weed control" },
+      { title: "Top dressing", event_type: "fertilizer", dayOffset: 50, priority: "medium", description: "Apply urea top dressing" },
+      { title: "Pest monitoring", event_type: "spraying", dayOffset: 60, priority: "medium", description: "Check for stem borer and leaf folder" },
+      { title: "Drain field", event_type: "irrigation", dayOffset: 100, priority: "high", description: "Drain field 2 weeks before harvest" },
+      { title: "Harvest rice", event_type: "harvest", dayOffset: 120, priority: "high", description: "Harvest when 80% of grains are golden" },
+    ],
+  },
+  {
+    name: "Maize/Corn Cycle",
+    crop: "Maize",
+    events: [
+      { title: "Land preparation", event_type: "general", dayOffset: 0, priority: "high", description: "Plough and harrow the field" },
+      { title: "Sow maize seeds", event_type: "sowing", dayOffset: 3, priority: "high", description: "Sow seeds 5cm deep, 25cm spacing" },
+      { title: "First irrigation", event_type: "irrigation", dayOffset: 4, priority: "high", description: "Water immediately after sowing" },
+      { title: "Apply DAP fertilizer", event_type: "fertilizer", dayOffset: 14, priority: "high", description: "Apply DAP at 2-leaf stage" },
+      { title: "Thinning", event_type: "general", dayOffset: 18, priority: "medium", description: "Thin to 1 plant per station" },
+      { title: "First weeding", event_type: "spraying", dayOffset: 21, priority: "medium", description: "Remove weeds by hand or herbicide" },
+      { title: "Top dress with CAN", event_type: "fertilizer", dayOffset: 35, priority: "high", description: "Apply CAN fertilizer at knee-height" },
+      { title: "Second weeding", event_type: "spraying", dayOffset: 42, priority: "medium", description: "Second round of weed control" },
+      { title: "Harvest maize", event_type: "harvest", dayOffset: 110, priority: "high", description: "Harvest when husks dry and kernels are hard" },
+    ],
+  },
+];
+
 export default function FarmCalendar() {
   const { user } = useAuth();
   const { copy } = useDashboardTranslations();
   const [events, setEvents] = useState<FarmEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [templateStartDate, setTemplateStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<CropTemplate | null>(null);
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -92,7 +173,6 @@ export default function FarmCalendar() {
   const fetchEvents = async () => {
     setIsLoading(true);
     const { data, error } = await supabase.from("farm_events").select("*").order("event_date", { ascending: true });
-
     if (error) {
       console.error("Fetch events error:", error);
       toast({ variant: "destructive", title: copy.farmCalendar.errors.failedLoad });
@@ -124,15 +204,42 @@ export default function FarmCalendar() {
       toast({ title: copy.farmCalendar.errors.added });
       setIsDialogOpen(false);
       setNewEvent({
-        title: "",
-        description: "",
-        event_type: "general",
-        crop: "",
-        plot_name: "",
-        event_date: new Date().toISOString().split("T")[0],
-        reminder_date: "",
-        priority: "medium",
+        title: "", description: "", event_type: "general", crop: "", plot_name: "",
+        event_date: new Date().toISOString().split("T")[0], reminder_date: "", priority: "medium",
       });
+      void fetchEvents();
+    }
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!selectedTemplate || !user || !templateStartDate) return;
+    setIsApplyingTemplate(true);
+
+    const startDate = new Date(templateStartDate);
+    const eventsToInsert = selectedTemplate.events.map((e) => {
+      const eventDate = new Date(startDate);
+      eventDate.setDate(eventDate.getDate() + e.dayOffset);
+      return {
+        user_id: user.id,
+        title: e.title,
+        description: e.description,
+        event_type: e.event_type,
+        crop: selectedTemplate.crop,
+        event_date: eventDate.toISOString().split("T")[0],
+        priority: e.priority,
+      };
+    });
+
+    const { error } = await supabase.from("farm_events").insert(eventsToInsert);
+    setIsApplyingTemplate(false);
+
+    if (error) {
+      console.error("Template error:", error);
+      toast({ variant: "destructive", title: "Failed to apply template" });
+    } else {
+      toast({ title: `${selectedTemplate.name} applied — ${eventsToInsert.length} events created!` });
+      setIsTemplateDialogOpen(false);
+      setSelectedTemplate(null);
       void fetchEvents();
     }
   };
@@ -262,6 +369,56 @@ export default function FarmCalendar() {
               </DialogContent>
             </Dialog>
 
+            {/* Crop Lifecycle Templates */}
+            <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline"><ListPlus className="w-4 h-4 mr-2" /> Crop Templates</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Crop Lifecycle Templates</DialogTitle></DialogHeader>
+                <p className="text-sm text-muted-foreground mb-4">Auto-generate a complete farming schedule for a crop cycle. Select a template and start date.</p>
+                <div className="space-y-3">
+                  {CROP_TEMPLATES.map((template) => (
+                    <button
+                      key={template.name}
+                      onClick={() => setSelectedTemplate(selectedTemplate?.name === template.name ? null : template)}
+                      className={`w-full text-left p-4 rounded-xl border transition-all ${selectedTemplate?.name === template.name ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-foreground">{template.name}</p>
+                          <p className="text-xs text-muted-foreground">{template.events.length} tasks • ~{template.events[template.events.length - 1].dayOffset} days</p>
+                        </div>
+                        <Zap className={`w-5 h-5 ${selectedTemplate?.name === template.name ? "text-primary" : "text-muted-foreground"}`} />
+                      </div>
+                      {selectedTemplate?.name === template.name && (
+                        <div className="mt-3 space-y-1 border-t border-border pt-3">
+                          {template.events.map((e, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className={`w-1.5 h-1.5 rounded-full ${e.priority === "high" ? "bg-destructive" : e.priority === "medium" ? "bg-warning" : "bg-success"}`} />
+                              <span>Day {e.dayOffset}:</span>
+                              <span className="text-foreground">{e.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {selectedTemplate && (
+                  <div className="mt-4 space-y-3 border-t border-border pt-4">
+                    <div className="space-y-2">
+                      <Label>Start Date</Label>
+                      <Input type="date" value={templateStartDate} onChange={(e) => setTemplateStartDate(e.target.value)} />
+                    </div>
+                    <Button className="w-full" onClick={handleApplyTemplate} disabled={isApplyingTemplate}>
+                      {isApplyingTemplate ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Applying...</> : <>Apply {selectedTemplate.name}</>}
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger className="w-40"><SelectValue placeholder={copy.farmCalendar.labels.filterPlaceholder} /></SelectTrigger>
               <SelectContent>
@@ -296,7 +453,11 @@ export default function FarmCalendar() {
               {filteredEvents.length === 0 && (
                 <div className="text-center py-16">
                   <Calendar className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-muted-foreground">{copy.farmCalendar.empty}</p>
+                  <p className="text-muted-foreground mb-4">{copy.farmCalendar.empty}</p>
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add Event</Button>
+                    <Button variant="outline" onClick={() => setIsTemplateDialogOpen(true)}><ListPlus className="w-4 h-4 mr-2" /> Use Template</Button>
+                  </div>
                 </div>
               )}
             </div>
