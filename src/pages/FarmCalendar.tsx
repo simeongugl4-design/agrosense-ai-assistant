@@ -221,24 +221,67 @@ export default function FarmCalendar() {
     }
   };
 
-  const handleApplyTemplate = async () => {
-    if (!selectedTemplate || !user || !templateStartDate) return;
-    setIsApplyingTemplate(true);
-
-    const startDate = new Date(templateStartDate);
-    const eventsToInsert = selectedTemplate.events.map((e) => {
-      const eventDate = new Date(startDate);
-      eventDate.setDate(eventDate.getDate() + e.dayOffset);
+  const buildEditableTasks = (template: CropTemplate, startDateStr: string) => {
+    const startDate = new Date(startDateStr);
+    return template.events.map((e) => {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + e.dayOffset);
       return {
-        user_id: user.id,
         title: e.title,
-        description: e.description,
         event_type: e.event_type,
-        crop: selectedTemplate.crop,
-        event_date: eventDate.toISOString().split("T")[0],
         priority: e.priority,
+        description: e.description,
+        event_date: d.toISOString().split("T")[0],
+        include: true,
       };
     });
+  };
+
+  const handleSelectTemplate = (template: CropTemplate) => {
+    setSelectedTemplate(template);
+    setEditableTasks(buildEditableTasks(template, templateStartDate));
+  };
+
+  const handleProceedToEdit = () => {
+    if (!selectedTemplate) return;
+    setEditableTasks(buildEditableTasks(selectedTemplate, templateStartDate));
+    setTemplateStep("edit");
+  };
+
+  const updateTask = (index: number, patch: Partial<typeof editableTasks[number]>) => {
+    setEditableTasks((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+  };
+
+  const removeTask = (index: number) => {
+    setEditableTasks((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const resetTemplateDialog = () => {
+    setSelectedTemplate(null);
+    setEditableTasks([]);
+    setTemplateStep("choose");
+    setTemplatePlot("");
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!selectedTemplate || !user) return;
+    const tasksToSave = editableTasks.filter((t) => t.include && t.title && t.event_date);
+    if (tasksToSave.length === 0) {
+      toast({ variant: "destructive", title: "No tasks selected" });
+      return;
+    }
+    setIsApplyingTemplate(true);
+
+    const eventsToInsert = tasksToSave.map((t) => ({
+      user_id: user.id,
+      title: t.title,
+      description: t.description || null,
+      event_type: t.event_type,
+      crop: selectedTemplate.crop,
+      plot_name: templatePlot || null,
+      event_date: t.event_date,
+      priority: t.priority,
+    }));
 
     const { error } = await supabase.from("farm_events").insert(eventsToInsert);
     setIsApplyingTemplate(false);
@@ -249,7 +292,7 @@ export default function FarmCalendar() {
     } else {
       toast({ title: `${selectedTemplate.name} applied — ${eventsToInsert.length} events created!` });
       setIsTemplateDialogOpen(false);
-      setSelectedTemplate(null);
+      resetTemplateDialog();
       void fetchEvents();
     }
   };
