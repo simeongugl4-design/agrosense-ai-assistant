@@ -146,6 +146,16 @@ export default function FarmCalendar() {
   const [templateStartDate, setTemplateStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedTemplate, setSelectedTemplate] = useState<CropTemplate | null>(null);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const [templateStep, setTemplateStep] = useState<"choose" | "edit">("choose");
+  const [editableTasks, setEditableTasks] = useState<Array<{
+    title: string;
+    event_type: string;
+    priority: string;
+    description: string;
+    event_date: string;
+    include: boolean;
+  }>>([]);
+  const [templatePlot, setTemplatePlot] = useState("");
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
