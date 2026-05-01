@@ -34,7 +34,10 @@ import {
   Wheat,
   Zap,
   ListPlus,
+  ArrowLeft,
+  X,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -146,6 +149,16 @@ export default function FarmCalendar() {
   const [templateStartDate, setTemplateStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedTemplate, setSelectedTemplate] = useState<CropTemplate | null>(null);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const [templateStep, setTemplateStep] = useState<"choose" | "edit">("choose");
+  const [editableTasks, setEditableTasks] = useState<Array<{
+    title: string;
+    event_type: string;
+    priority: string;
+    description: string;
+    event_date: string;
+    include: boolean;
+  }>>([]);
+  const [templatePlot, setTemplatePlot] = useState("");
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -211,24 +224,67 @@ export default function FarmCalendar() {
     }
   };
 
-  const handleApplyTemplate = async () => {
-    if (!selectedTemplate || !user || !templateStartDate) return;
-    setIsApplyingTemplate(true);
-
-    const startDate = new Date(templateStartDate);
-    const eventsToInsert = selectedTemplate.events.map((e) => {
-      const eventDate = new Date(startDate);
-      eventDate.setDate(eventDate.getDate() + e.dayOffset);
+  const buildEditableTasks = (template: CropTemplate, startDateStr: string) => {
+    const startDate = new Date(startDateStr);
+    return template.events.map((e) => {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + e.dayOffset);
       return {
-        user_id: user.id,
         title: e.title,
-        description: e.description,
         event_type: e.event_type,
-        crop: selectedTemplate.crop,
-        event_date: eventDate.toISOString().split("T")[0],
         priority: e.priority,
+        description: e.description,
+        event_date: d.toISOString().split("T")[0],
+        include: true,
       };
     });
+  };
+
+  const handleSelectTemplate = (template: CropTemplate) => {
+    setSelectedTemplate(template);
+    setEditableTasks(buildEditableTasks(template, templateStartDate));
+  };
+
+  const handleProceedToEdit = () => {
+    if (!selectedTemplate) return;
+    setEditableTasks(buildEditableTasks(selectedTemplate, templateStartDate));
+    setTemplateStep("edit");
+  };
+
+  const updateTask = (index: number, patch: Partial<typeof editableTasks[number]>) => {
+    setEditableTasks((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+  };
+
+  const removeTask = (index: number) => {
+    setEditableTasks((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const resetTemplateDialog = () => {
+    setSelectedTemplate(null);
+    setEditableTasks([]);
+    setTemplateStep("choose");
+    setTemplatePlot("");
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!selectedTemplate || !user) return;
+    const tasksToSave = editableTasks.filter((t) => t.include && t.title && t.event_date);
+    if (tasksToSave.length === 0) {
+      toast({ variant: "destructive", title: "No tasks selected" });
+      return;
+    }
+    setIsApplyingTemplate(true);
+
+    const eventsToInsert = tasksToSave.map((t) => ({
+      user_id: user.id,
+      title: t.title,
+      description: t.description || null,
+      event_type: t.event_type,
+      crop: selectedTemplate.crop,
+      plot_name: templatePlot || null,
+      event_date: t.event_date,
+      priority: t.priority,
+    }));
 
     const { error } = await supabase.from("farm_events").insert(eventsToInsert);
     setIsApplyingTemplate(false);
@@ -239,7 +295,7 @@ export default function FarmCalendar() {
     } else {
       toast({ title: `${selectedTemplate.name} applied — ${eventsToInsert.length} events created!` });
       setIsTemplateDialogOpen(false);
-      setSelectedTemplate(null);
+      resetTemplateDialog();
       void fetchEvents();
     }
   };
@@ -370,51 +426,202 @@ export default function FarmCalendar() {
             </Dialog>
 
             {/* Crop Lifecycle Templates */}
-            <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+            <Dialog
+              open={isTemplateDialogOpen}
+              onOpenChange={(open) => {
+                setIsTemplateDialogOpen(open);
+                if (!open) resetTemplateDialog();
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline"><ListPlus className="w-4 h-4 mr-2" /> Crop Templates</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Crop Lifecycle Templates</DialogTitle></DialogHeader>
-                <p className="text-sm text-muted-foreground mb-4">Auto-generate a complete farming schedule for a crop cycle. Select a template and start date.</p>
-                <div className="space-y-3">
-                  {CROP_TEMPLATES.map((template) => (
-                    <button
-                      key={template.name}
-                      onClick={() => setSelectedTemplate(selectedTemplate?.name === template.name ? null : template)}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${selectedTemplate?.name === template.name ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{template.name}</p>
-                          <p className="text-xs text-muted-foreground">{template.events.length} tasks • ~{template.events[template.events.length - 1].dayOffset} days</p>
-                        </div>
-                        <Zap className={`w-5 h-5 ${selectedTemplate?.name === template.name ? "text-primary" : "text-muted-foreground"}`} />
-                      </div>
-                      {selectedTemplate?.name === template.name && (
-                        <div className="mt-3 space-y-1 border-t border-border pt-3">
-                          {template.events.map((e, i) => (
-                            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className={`w-1.5 h-1.5 rounded-full ${e.priority === "high" ? "bg-destructive" : e.priority === "medium" ? "bg-warning" : "bg-success"}`} />
-                              <span>Day {e.dayOffset}:</span>
-                              <span className="text-foreground">{e.title}</span>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    {templateStep === "edit" && (
+                      <button
+                        type="button"
+                        onClick={() => setTemplateStep("choose")}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Back"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                    )}
+                    {templateStep === "choose" ? "Crop Lifecycle Templates" : `Review: ${selectedTemplate?.name}`}
+                  </DialogTitle>
+                </DialogHeader>
+
+                {templateStep === "choose" && (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Pick a crop cycle. You'll review and edit each task (date, type, priority, notes) before saving.
+                    </p>
+                    <div className="space-y-3">
+                      {CROP_TEMPLATES.map((template) => {
+                        const isSelected = selectedTemplate?.name === template.name;
+                        const counts = template.events.reduce<Record<string, number>>((acc, e) => {
+                          acc[e.event_type] = (acc[e.event_type] || 0) + 1;
+                          return acc;
+                        }, {});
+                        return (
+                          <button
+                            key={template.name}
+                            onClick={() => handleSelectTemplate(template)}
+                            className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-foreground">{template.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {template.events.length} tasks • ~{template.events[template.events.length - 1].dayOffset} days
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                                  {counts.irrigation && <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent">💧 {counts.irrigation} irrigation</span>}
+                                  {counts.fertilizer && <span className="px-2 py-0.5 rounded-full bg-warning/10 text-warning">🧪 {counts.fertilizer} fertilizer</span>}
+                                  {counts.spraying && <span className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">🐛 {counts.spraying} spraying</span>}
+                                  {counts.harvest && <span className="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">🌾 {counts.harvest} harvest</span>}
+                                </div>
+                              </div>
+                              <Zap className={`w-5 h-5 flex-shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                {selectedTemplate && (
-                  <div className="mt-4 space-y-3 border-t border-border pt-4">
-                    <div className="space-y-2">
-                      <Label>Start Date</Label>
-                      <Input type="date" value={templateStartDate} onChange={(e) => setTemplateStartDate(e.target.value)} />
+                          </button>
+                        );
+                      })}
                     </div>
-                    <Button className="w-full" onClick={handleApplyTemplate} disabled={isApplyingTemplate}>
-                      {isApplyingTemplate ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Applying...</> : <>Apply {selectedTemplate.name}</>}
-                    </Button>
-                  </div>
+
+                    {selectedTemplate && (
+                      <div className="mt-4 space-y-3 border-t border-border pt-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label>Start Date</Label>
+                            <Input
+                              type="date"
+                              value={templateStartDate}
+                              onChange={(e) => {
+                                setTemplateStartDate(e.target.value);
+                                if (selectedTemplate) setEditableTasks(buildEditableTasks(selectedTemplate, e.target.value));
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Plot (optional)</Label>
+                            <Input placeholder="e.g. North field" value={templatePlot} onChange={(e) => setTemplatePlot(e.target.value)} />
+                          </div>
+                        </div>
+                        <Button className="w-full" onClick={handleProceedToEdit}>
+                          Review & edit {selectedTemplate.events.length} tasks →
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {templateStep === "edit" && selectedTemplate && (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Adjust dates, edit details, or remove tasks. Uncheck a task to skip it without deleting.
+                    </p>
+                    <div className="flex items-center justify-between mb-3 text-sm">
+                      <span className="text-muted-foreground">
+                        {editableTasks.filter((t) => t.include).length} of {editableTasks.length} tasks selected
+                      </span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setEditableTasks((prev) => prev.map((t) => ({ ...t, include: true })))}>All</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditableTasks((prev) => prev.map((t) => ({ ...t, include: false })))}>None</Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {editableTasks.map((task, idx) => (
+                        <div
+                          key={idx}
+                          className={`rounded-xl border p-3 transition-all ${task.include ? "border-border bg-card" : "border-dashed border-border/50 bg-muted/30 opacity-60"}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={task.include}
+                              onCheckedChange={(v) => updateTask(idx, { include: Boolean(v) })}
+                              className="mt-1"
+                            />
+                            <div className="flex-1 space-y-2 min-w-0">
+                              <div className="flex items-center gap-2">
+                                {getEventIcon(task.event_type)}
+                                <Input
+                                  value={task.title}
+                                  onChange={(e) => updateTask(idx, { title: e.target.value })}
+                                  className="h-8 font-medium"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeTask(idx)}
+                                  className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                                  aria-label="Remove task"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Date</Label>
+                                  <Input
+                                    type="date"
+                                    value={task.event_date}
+                                    onChange={(e) => updateTask(idx, { event_date: e.target.value })}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Type</Label>
+                                  <Select value={task.event_type} onValueChange={(v) => updateTask(idx, { event_type: v })}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {eventTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Priority</Label>
+                                  <Select value={task.priority} onValueChange={(v) => updateTask(idx, { priority: v })}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="low">{copy.common.priorities.low}</SelectItem>
+                                      <SelectItem value="medium">{copy.common.priorities.medium}</SelectItem>
+                                      <SelectItem value="high">{copy.common.priorities.high}</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <Textarea
+                                value={task.description}
+                                onChange={(e) => updateTask(idx, { description: e.target.value })}
+                                rows={2}
+                                className="text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex gap-2 sticky bottom-0 bg-background pt-3 border-t border-border">
+                      <Button variant="outline" onClick={() => setTemplateStep("choose")} className="flex-1">
+                        Back
+                      </Button>
+                      <Button
+                        onClick={handleApplyTemplate}
+                        disabled={isApplyingTemplate || editableTasks.filter((t) => t.include).length === 0}
+                        className="flex-1"
+                      >
+                        {isApplyingTemplate ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+                        ) : (
+                          <>Save {editableTasks.filter((t) => t.include).length} tasks</>
+                        )}
+                      </Button>
+                    </div>
+                  </>
                 )}
               </DialogContent>
             </Dialog>
