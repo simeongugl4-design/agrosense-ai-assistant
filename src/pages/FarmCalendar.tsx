@@ -75,8 +75,11 @@ interface CropTemplate {
   }>;
 }
 
-const CROP_TEMPLATES: CropTemplate[] = [
+type CropTemplateKey = "kaukau" | "taro" | "rice" | "maize";
+
+const CROP_TEMPLATES: Array<CropTemplate & { key: CropTemplateKey }> = [
   {
+    key: "kaukau",
     name: "Kaukau (Sweet Potato) Cycle",
     crop: "Kaukau",
     events: [
@@ -92,6 +95,7 @@ const CROP_TEMPLATES: CropTemplate[] = [
     ],
   },
   {
+    key: "taro",
     name: "Taro Growing Cycle",
     crop: "Taro",
     events: [
@@ -107,6 +111,7 @@ const CROP_TEMPLATES: CropTemplate[] = [
     ],
   },
   {
+    key: "rice",
     name: "Rice Paddy Cycle",
     crop: "Rice",
     events: [
@@ -122,6 +127,7 @@ const CROP_TEMPLATES: CropTemplate[] = [
     ],
   },
   {
+    key: "maize",
     name: "Maize/Corn Cycle",
     crop: "Maize",
     events: [
