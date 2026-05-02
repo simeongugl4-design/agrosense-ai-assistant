@@ -276,7 +276,7 @@ export default function FarmCalendar() {
     if (!selectedTemplate || !user) return;
     const tasksToSave = editableTasks.filter((t) => t.include && t.title && t.event_date);
     if (tasksToSave.length === 0) {
-      toast({ variant: "destructive", title: "No tasks selected" });
+      toast({ variant: "destructive", title: copy.farmCalendar.templates.noTasksSelected });
       return;
     }
     setIsApplyingTemplate(true);
@@ -297,9 +297,10 @@ export default function FarmCalendar() {
 
     if (error) {
       console.error("Template error:", error);
-      toast({ variant: "destructive", title: "Failed to apply template" });
+      toast({ variant: "destructive", title: copy.farmCalendar.templates.failedApply });
     } else {
-      toast({ title: `${selectedTemplate.name} applied — ${eventsToInsert.length} events created!` });
+      const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[(selectedTemplate as CropTemplate & { key: CropTemplateKey }).key] ?? selectedTemplate.name;
+      toast({ title: formatDashboardText(copy.farmCalendar.templates.appliedSuccess, { name: localizedName, count: eventsToInsert.length }) });
       setIsTemplateDialogOpen(false);
       resetTemplateDialog();
       void fetchEvents();
