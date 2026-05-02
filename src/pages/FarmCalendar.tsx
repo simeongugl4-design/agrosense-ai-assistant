@@ -441,7 +441,7 @@ export default function FarmCalendar() {
               }}
             >
               <DialogTrigger asChild>
-                <Button variant="outline"><ListPlus className="w-4 h-4 mr-2" /> Crop Templates</Button>
+                <Button variant="outline"><ListPlus className="w-4 h-4 mr-2" /> {copy.farmCalendar.templates.button}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -451,19 +451,25 @@ export default function FarmCalendar() {
                         type="button"
                         onClick={() => setTemplateStep("choose")}
                         className="text-muted-foreground hover:text-foreground"
-                        aria-label="Back"
+                        aria-label={copy.farmCalendar.templates.back}
                       >
                         <ArrowLeft className="w-4 h-4" />
                       </button>
                     )}
-                    {templateStep === "choose" ? "Crop Lifecycle Templates" : `Review: ${selectedTemplate?.name}`}
+                    {templateStep === "choose"
+                      ? copy.farmCalendar.templates.dialogTitle
+                      : formatDashboardText(copy.farmCalendar.templates.reviewTitle, {
+                          name: selectedTemplate
+                            ? (copy.farmCalendar.templates.cropNames as Record<string, string>)[(selectedTemplate as CropTemplate & { key: CropTemplateKey }).key] ?? selectedTemplate.name
+                            : "",
+                        })}
                   </DialogTitle>
                 </DialogHeader>
 
                 {templateStep === "choose" && (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Pick a crop cycle. You'll review and edit each task (date, type, priority, notes) before saving.
+                      {copy.farmCalendar.templates.intro}
                     </p>
                     <div className="space-y-3">
                       {CROP_TEMPLATES.map((template) => {
@@ -472,6 +478,7 @@ export default function FarmCalendar() {
                           acc[e.event_type] = (acc[e.event_type] || 0) + 1;
                           return acc;
                         }, {});
+                        const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[template.key] ?? template.name;
                         return (
                           <button
                             key={template.name}
@@ -480,15 +487,18 @@ export default function FarmCalendar() {
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-medium text-foreground">{template.name}</p>
+                                <p className="font-medium text-foreground">{localizedName}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {template.events.length} tasks • ~{template.events[template.events.length - 1].dayOffset} days
+                                  {formatDashboardText(copy.farmCalendar.templates.tasksCount, {
+                                    count: template.events.length,
+                                    days: template.events[template.events.length - 1].dayOffset,
+                                  })}
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                                  {counts.irrigation && <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent">💧 {counts.irrigation} irrigation</span>}
-                                  {counts.fertilizer && <span className="px-2 py-0.5 rounded-full bg-warning/10 text-warning">🧪 {counts.fertilizer} fertilizer</span>}
-                                  {counts.spraying && <span className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">🐛 {counts.spraying} spraying</span>}
-                                  {counts.harvest && <span className="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">🌾 {counts.harvest} harvest</span>}
+                                  {counts.irrigation && <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent">{formatDashboardText(copy.farmCalendar.templates.irrigationBadge, { count: counts.irrigation })}</span>}
+                                  {counts.fertilizer && <span className="px-2 py-0.5 rounded-full bg-warning/10 text-warning">{formatDashboardText(copy.farmCalendar.templates.fertilizerBadge, { count: counts.fertilizer })}</span>}
+                                  {counts.spraying && <span className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">{formatDashboardText(copy.farmCalendar.templates.sprayingBadge, { count: counts.spraying })}</span>}
+                                  {counts.harvest && <span className="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">{formatDashboardText(copy.farmCalendar.templates.harvestBadge, { count: counts.harvest })}</span>}
                                 </div>
                               </div>
                               <Zap className={`w-5 h-5 flex-shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
@@ -502,7 +512,7 @@ export default function FarmCalendar() {
                       <div className="mt-4 space-y-3 border-t border-border pt-4">
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
-                            <Label>Start Date</Label>
+                            <Label>{copy.farmCalendar.templates.startDate}</Label>
                             <Input
                               type="date"
                               value={templateStartDate}
@@ -513,12 +523,12 @@ export default function FarmCalendar() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Plot (optional)</Label>
-                            <Input placeholder="e.g. North field" value={templatePlot} onChange={(e) => setTemplatePlot(e.target.value)} />
+                            <Label>{copy.farmCalendar.templates.plotOptional}</Label>
+                            <Input placeholder={copy.farmCalendar.templates.plotPlaceholder} value={templatePlot} onChange={(e) => setTemplatePlot(e.target.value)} />
                           </div>
                         </div>
                         <Button className="w-full" onClick={handleProceedToEdit}>
-                          Review & edit {selectedTemplate.events.length} tasks →
+                          {formatDashboardText(copy.farmCalendar.templates.proceed, { count: selectedTemplate.events.length })}
                         </Button>
                       </div>
                     )}
@@ -528,15 +538,18 @@ export default function FarmCalendar() {
                 {templateStep === "edit" && selectedTemplate && (
                   <>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Adjust dates, edit details, or remove tasks. Uncheck a task to skip it without deleting.
+                      {copy.farmCalendar.templates.editIntro}
                     </p>
                     <div className="flex items-center justify-between mb-3 text-sm">
                       <span className="text-muted-foreground">
-                        {editableTasks.filter((t) => t.include).length} of {editableTasks.length} tasks selected
+                        {formatDashboardText(copy.farmCalendar.templates.selectionSummary, {
+                          selected: editableTasks.filter((t) => t.include).length,
+                          total: editableTasks.length,
+                        })}
                       </span>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => setEditableTasks((prev) => prev.map((t) => ({ ...t, include: true })))}>All</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditableTasks((prev) => prev.map((t) => ({ ...t, include: false })))}>None</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditableTasks((prev) => prev.map((t) => ({ ...t, include: true })))}>{copy.farmCalendar.templates.selectAll}</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditableTasks((prev) => prev.map((t) => ({ ...t, include: false })))}>{copy.farmCalendar.templates.selectNone}</Button>
                       </div>
                     </div>
 
@@ -564,14 +577,14 @@ export default function FarmCalendar() {
                                   type="button"
                                   onClick={() => removeTask(idx)}
                                   className="text-muted-foreground hover:text-destructive flex-shrink-0"
-                                  aria-label="Remove task"
+                                  aria-label={copy.farmCalendar.templates.removeTask}
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
                               </div>
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                  <Label className="text-xs text-muted-foreground">Date</Label>
+                                  <Label className="text-xs text-muted-foreground">{copy.farmCalendar.templates.taskDate}</Label>
                                   <Input
                                     type="date"
                                     value={task.event_date}
@@ -580,7 +593,7 @@ export default function FarmCalendar() {
                                   />
                                 </div>
                                 <div>
-                                  <Label className="text-xs text-muted-foreground">Type</Label>
+                                  <Label className="text-xs text-muted-foreground">{copy.farmCalendar.templates.taskType}</Label>
                                   <Select value={task.event_type} onValueChange={(v) => updateTask(idx, { event_type: v })}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -589,7 +602,7 @@ export default function FarmCalendar() {
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label className="text-xs text-muted-foreground">Priority</Label>
+                                  <Label className="text-xs text-muted-foreground">{copy.farmCalendar.templates.taskPriority}</Label>
                                   <Select value={task.priority} onValueChange={(v) => updateTask(idx, { priority: v })}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                     <SelectContent>
@@ -614,7 +627,7 @@ export default function FarmCalendar() {
 
                     <div className="mt-4 flex gap-2 sticky bottom-0 bg-background pt-3 border-t border-border">
                       <Button variant="outline" onClick={() => setTemplateStep("choose")} className="flex-1">
-                        Back
+                        {copy.farmCalendar.templates.back}
                       </Button>
                       <Button
                         onClick={handleApplyTemplate}
@@ -622,9 +635,9 @@ export default function FarmCalendar() {
                         className="flex-1"
                       >
                         {isApplyingTemplate ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{copy.farmCalendar.templates.saving}</>
                         ) : (
-                          <>Save {editableTasks.filter((t) => t.include).length} tasks</>
+                          <>{formatDashboardText(copy.farmCalendar.templates.saveTasks, { count: editableTasks.filter((t) => t.include).length })}</>
                         )}
                       </Button>
                     </div>
