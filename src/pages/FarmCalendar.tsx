@@ -682,8 +682,8 @@ export default function FarmCalendar() {
                   <Calendar className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
                   <p className="text-muted-foreground mb-4">{copy.farmCalendar.empty}</p>
                   <div className="flex gap-3 justify-center">
-                    <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add Event</Button>
-                    <Button variant="outline" onClick={() => setIsTemplateDialogOpen(true)}><ListPlus className="w-4 h-4 mr-2" /> Use Template</Button>
+                    <Button onClick={() => setIsDialogOpen(true)}><Plus className="w-4 h-4 mr-2" /> {copy.farmCalendar.addEvent}</Button>
+                    <Button variant="outline" onClick={() => setIsTemplateDialogOpen(true)}><ListPlus className="w-4 h-4 mr-2" /> {copy.farmCalendar.useTemplate}</Button>
                   </div>
                 </div>
               )}
