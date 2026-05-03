@@ -87,27 +87,34 @@ export function Sidebar() {
       )}
 
       <nav className="flex-1 py-4 px-3 overflow-y-auto">
-        <div className="space-y-1">
-          {mainNavItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/dashboard"}
-              onClick={() => setIsOpen(false)}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                )
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
+        {navSections.map((section) => (
+          <div key={section.label} className="mb-4">
+            <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-semibold">
+              {section.label}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === "/dashboard"}
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    )
+                  }
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ))}
 
         <div className="mt-6 mx-1 p-4 rounded-xl bg-sidebar-primary/20 border border-sidebar-primary/30">
           <div className="flex items-center gap-2 mb-2">
