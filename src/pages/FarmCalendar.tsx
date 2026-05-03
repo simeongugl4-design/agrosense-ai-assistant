@@ -465,9 +465,7 @@ export default function FarmCalendar() {
                     {templateStep === "choose"
                       ? copy.farmCalendar.templates.dialogTitle
                       : formatDashboardText(copy.farmCalendar.templates.reviewTitle, {
-                          name: selectedTemplate
-                            ? (copy.farmCalendar.templates.cropNames as Record<string, string>)[(selectedTemplate as CropTemplate & { key: CropTemplateKey }).key] ?? selectedTemplate.name
-                            : "",
+                          name: selectedTemplateLocalizedName,
                         })}
                   </DialogTitle>
                 </DialogHeader>
