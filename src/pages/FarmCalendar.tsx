@@ -252,8 +252,8 @@ export default function FarmCalendar() {
     });
   };
 
-  const handleSelectTemplate = (template: CropTemplate) => {
-    setSelectedTemplate(template);
+  const handleSelectTemplate = (template: CropTemplate & { key: CropTemplateKey }) => {
+    setSelectedTemplateKey(template.key);
     setEditableTasks(buildEditableTasks(template, templateStartDate));
   };
 
