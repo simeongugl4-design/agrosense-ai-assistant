@@ -479,7 +479,7 @@ export default function FarmCalendar() {
                     </p>
                     <div className="space-y-3">
                       {CROP_TEMPLATES.map((template) => {
-                        const isSelected = selectedTemplate?.name === template.name;
+                        const isSelected = selectedTemplateKey === template.key;
                         const counts = template.events.reduce<Record<string, number>>((acc, e) => {
                           acc[e.event_type] = (acc[e.event_type] || 0) + 1;
                           return acc;
@@ -487,9 +487,10 @@ export default function FarmCalendar() {
                         const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[template.key] ?? template.name;
                         return (
                           <button
-                            key={template.name}
+                            key={template.key}
                             onClick={() => handleSelectTemplate(template)}
-                            className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                            aria-pressed={isSelected}
+                            className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/40" : "border-border hover:border-primary/30"}`}
                           >
                             <div className="flex items-center justify-between">
                               <div>
