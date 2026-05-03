@@ -148,8 +148,6 @@ const CROP_TEMPLATES: Array<CropTemplate & { key: CropTemplateKey }> = [
 
 export default function FarmCalendar() {
   const { user } = useAuth();
-  const { copy } = useDashboardTranslations();
-  const [events, setEvents] = useState<FarmEvent[]>([]);
   const { copy, language } = useDashboardTranslations();
   const [events, setEvents] = useState<FarmEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
