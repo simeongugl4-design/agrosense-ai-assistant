@@ -49,6 +49,157 @@ export type Database = {
           },
         ]
       }
+      community_post_comments: {
+        Row: {
+          author_id: string
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          author_id: string
+          author_name?: string
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_posts: {
+        Row: {
+          author_id: string
+          author_name: string
+          body: string
+          category: string
+          created_at: string
+          id: string
+          image_url: string | null
+          language: string | null
+          like_count: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          author_name?: string
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          language?: string | null
+          like_count?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          language?: string | null
+          like_count?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cooperative_groups: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          member_count: number
+          name: string
+          owner_id: string
+          primary_crop: string | null
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          member_count?: number
+          name: string
+          owner_id: string
+          primary_crop?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          member_count?: number
+          name?: string
+          owner_id?: string
+          primary_crop?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cooperative_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          member_id: string
+          member_name: string
+          role: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          member_id: string
+          member_name?: string
+          role?: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          member_id?: string
+          member_name?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cooperative_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "cooperative_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_events: {
         Row: {
           created_at: string
