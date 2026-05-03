@@ -153,7 +153,13 @@ export default function FarmCalendar() {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [templateStartDate, setTemplateStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [selectedTemplate, setSelectedTemplate] = useState<CropTemplate | null>(null);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<CropTemplateKey | null>(null);
+  const selectedTemplate = selectedTemplateKey
+    ? CROP_TEMPLATES.find((t) => t.key === selectedTemplateKey) ?? null
+    : null;
+  const selectedTemplateLocalizedName = selectedTemplateKey
+    ? (copy.farmCalendar.templates.cropNames as Record<string, string>)[selectedTemplateKey] ?? selectedTemplate?.name ?? ""
+    : "";
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [templateStep, setTemplateStep] = useState<"choose" | "edit">("choose");
   const [editableTasks, setEditableTasks] = useState<Array<{
