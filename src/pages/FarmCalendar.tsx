@@ -305,8 +305,7 @@ export default function FarmCalendar() {
       console.error("Template error:", error);
       toast({ variant: "destructive", title: copy.farmCalendar.templates.failedApply });
     } else {
-      const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[(selectedTemplate as CropTemplate & { key: CropTemplateKey }).key] ?? selectedTemplate.name;
-      toast({ title: formatDashboardText(copy.farmCalendar.templates.appliedSuccess, { name: localizedName, count: eventsToInsert.length }) });
+      toast({ title: formatDashboardText(copy.farmCalendar.templates.appliedSuccess, { name: selectedTemplateLocalizedName, count: eventsToInsert.length }) });
       setIsTemplateDialogOpen(false);
       resetTemplateDialog();
       void fetchEvents();
