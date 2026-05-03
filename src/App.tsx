@@ -19,6 +19,9 @@ import Marketplace from "./pages/Marketplace";
 import Settings from "./pages/Settings";
 import SoilAnalysis from "./pages/SoilAnalysis";
 import NotFound from "./pages/NotFound";
+import Hub from "./pages/Hub";
+import Community from "./pages/Community";
+import Cooperatives from "./pages/Cooperatives";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +47,9 @@ const App = () => (
               <Route path="/dashboard/marketplace" element={<Marketplace />} />
               <Route path="/dashboard/settings" element={<Settings />} />
               <Route path="/dashboard/soil" element={<SoilAnalysis />} />
+              <Route path="/dashboard/hub" element={<Hub />} />
+              <Route path="/dashboard/community" element={<Community />} />
+              <Route path="/dashboard/cooperatives" element={<Cooperatives />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Leaf, LayoutDashboard, Sprout, Cloud, Camera, Droplets, FlaskConical, MessageCircle,
   Settings, HelpCircle, LogOut, Menu, X, Crown, Calendar, ShoppingCart, TestTubes,
+  Users, Home,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -15,17 +16,40 @@ export function Sidebar() {
   const { signOut, user } = useAuth();
   const { copy } = useDashboardTranslations();
 
-  const mainNavItems = [
-    { icon: LayoutDashboard, label: copy.sidebar.dashboard, path: "/dashboard" },
-    { icon: Sprout, label: copy.sidebar.cropAdvisor, path: "/dashboard/crops" },
-    { icon: Cloud, label: copy.sidebar.weather, path: "/dashboard/weather" },
-    { icon: TestTubes, label: copy.sidebar.soilAnalysis, path: "/dashboard/soil" },
-    { icon: Camera, label: copy.sidebar.diseaseScanner, path: "/dashboard/disease" },
-    { icon: Droplets, label: copy.sidebar.irrigation, path: "/dashboard/irrigation" },
-    { icon: FlaskConical, label: copy.sidebar.fertilizer, path: "/dashboard/fertilizer" },
-    { icon: Calendar, label: copy.sidebar.farmCalendar, path: "/dashboard/calendar" },
-    { icon: ShoppingCart, label: copy.sidebar.marketplace, path: "/dashboard/marketplace" },
-    { icon: MessageCircle, label: copy.sidebar.aiAssistant, path: "/dashboard/assistant" },
+  const navSections = [
+    {
+      label: "Hub",
+      items: [
+        { icon: Home, label: "Hub", path: "/dashboard/hub" },
+        { icon: LayoutDashboard, label: copy.sidebar.dashboard, path: "/dashboard" },
+      ],
+    },
+    {
+      label: "AI Tools",
+      items: [
+        { icon: Sprout, label: copy.sidebar.cropAdvisor, path: "/dashboard/crops" },
+        { icon: TestTubes, label: copy.sidebar.soilAnalysis, path: "/dashboard/soil" },
+        { icon: Camera, label: copy.sidebar.diseaseScanner, path: "/dashboard/disease" },
+        { icon: Droplets, label: copy.sidebar.irrigation, path: "/dashboard/irrigation" },
+        { icon: FlaskConical, label: copy.sidebar.fertilizer, path: "/dashboard/fertilizer" },
+        { icon: MessageCircle, label: copy.sidebar.aiAssistant, path: "/dashboard/assistant" },
+      ],
+    },
+    {
+      label: "Plan",
+      items: [
+        { icon: Cloud, label: copy.sidebar.weather, path: "/dashboard/weather" },
+        { icon: Calendar, label: copy.sidebar.farmCalendar, path: "/dashboard/calendar" },
+      ],
+    },
+    {
+      label: "Community",
+      items: [
+        { icon: ShoppingCart, label: copy.sidebar.marketplace, path: "/dashboard/marketplace" },
+        { icon: MessageCircle, label: "Community", path: "/dashboard/community" },
+        { icon: Users, label: "Cooperatives", path: "/dashboard/cooperatives" },
+      ],
+    },
   ];
 
   const bottomNavItems = [
@@ -63,27 +87,34 @@ export function Sidebar() {
       )}
 
       <nav className="flex-1 py-4 px-3 overflow-y-auto">
-        <div className="space-y-1">
-          {mainNavItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/dashboard"}
-              onClick={() => setIsOpen(false)}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                )
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
+        {navSections.map((section) => (
+          <div key={section.label} className="mb-4">
+            <p className="px-3 mb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-semibold">
+              {section.label}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === "/dashboard"}
+                  onClick={() => setIsOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    )
+                  }
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ))}
 
         <div className="mt-6 mx-1 p-4 rounded-xl bg-sidebar-primary/20 border border-sidebar-primary/30">
           <div className="flex items-center gap-2 mb-2">
