@@ -36,6 +36,8 @@ import {
   ListPlus,
   ArrowLeft,
   X,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
