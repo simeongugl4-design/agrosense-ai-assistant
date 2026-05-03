@@ -16,17 +16,40 @@ export function Sidebar() {
   const { signOut, user } = useAuth();
   const { copy } = useDashboardTranslations();
 
-  const mainNavItems = [
-    { icon: LayoutDashboard, label: copy.sidebar.dashboard, path: "/dashboard" },
-    { icon: Sprout, label: copy.sidebar.cropAdvisor, path: "/dashboard/crops" },
-    { icon: Cloud, label: copy.sidebar.weather, path: "/dashboard/weather" },
-    { icon: TestTubes, label: copy.sidebar.soilAnalysis, path: "/dashboard/soil" },
-    { icon: Camera, label: copy.sidebar.diseaseScanner, path: "/dashboard/disease" },
-    { icon: Droplets, label: copy.sidebar.irrigation, path: "/dashboard/irrigation" },
-    { icon: FlaskConical, label: copy.sidebar.fertilizer, path: "/dashboard/fertilizer" },
-    { icon: Calendar, label: copy.sidebar.farmCalendar, path: "/dashboard/calendar" },
-    { icon: ShoppingCart, label: copy.sidebar.marketplace, path: "/dashboard/marketplace" },
-    { icon: MessageCircle, label: copy.sidebar.aiAssistant, path: "/dashboard/assistant" },
+  const navSections = [
+    {
+      label: "Hub",
+      items: [
+        { icon: Home, label: "Hub", path: "/dashboard/hub" },
+        { icon: LayoutDashboard, label: copy.sidebar.dashboard, path: "/dashboard" },
+      ],
+    },
+    {
+      label: "AI Tools",
+      items: [
+        { icon: Sprout, label: copy.sidebar.cropAdvisor, path: "/dashboard/crops" },
+        { icon: TestTubes, label: copy.sidebar.soilAnalysis, path: "/dashboard/soil" },
+        { icon: Camera, label: copy.sidebar.diseaseScanner, path: "/dashboard/disease" },
+        { icon: Droplets, label: copy.sidebar.irrigation, path: "/dashboard/irrigation" },
+        { icon: FlaskConical, label: copy.sidebar.fertilizer, path: "/dashboard/fertilizer" },
+        { icon: MessageCircle, label: copy.sidebar.aiAssistant, path: "/dashboard/assistant" },
+      ],
+    },
+    {
+      label: "Plan",
+      items: [
+        { icon: Cloud, label: copy.sidebar.weather, path: "/dashboard/weather" },
+        { icon: Calendar, label: copy.sidebar.farmCalendar, path: "/dashboard/calendar" },
+      ],
+    },
+    {
+      label: "Community",
+      items: [
+        { icon: ShoppingCart, label: copy.sidebar.marketplace, path: "/dashboard/marketplace" },
+        { icon: MessageCircle, label: "Community", path: "/dashboard/community" },
+        { icon: Users, label: "Cooperatives", path: "/dashboard/cooperatives" },
+      ],
+    },
   ];
 
   const bottomNavItems = [
