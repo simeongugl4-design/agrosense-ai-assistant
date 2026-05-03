@@ -150,17 +150,65 @@ export default function FarmCalendar() {
   const { user } = useAuth();
   const { copy } = useDashboardTranslations();
   const [events, setEvents] = useState<FarmEvent[]>([]);
+  const { copy, language } = useDashboardTranslations();
+  const [events, setEvents] = useState<FarmEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [templateStartDate, setTemplateStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<CropTemplateKey | null>(null);
+
+  // Per-language custom names for crop templates: { [language]: { [key]: name } }
+  const CUSTOM_NAMES_STORAGE_KEY = "agrosense_template_custom_names_v1";
+  const [customNames, setCustomNames] = useState<Record<string, Partial<Record<CropTemplateKey, string>>>>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_NAMES_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [renamingKey, setRenamingKey] = useState<CropTemplateKey | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+
+  const getDefaultLocalizedName = (key: CropTemplateKey): string => {
+    const fallback = CROP_TEMPLATES.find((t) => t.key === key)?.name ?? "";
+    return (copy.farmCalendar.templates.cropNames as Record<string, string>)[key] ?? fallback;
+  };
+
+  const getDisplayName = (key: CropTemplateKey): string => {
+    return customNames[language]?.[key] ?? getDefaultLocalizedName(key);
+  };
+
+  const persistCustomNames = (next: typeof customNames) => {
+    setCustomNames(next);
+    try {
+      localStorage.setItem(CUSTOM_NAMES_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore quota errors */
+    }
+  };
+
+  const saveRename = (key: CropTemplateKey) => {
+    const trimmed = renameDraft.trim();
+    const langBucket = { ...(customNames[language] ?? {}) };
+    if (!trimmed || trimmed === getDefaultLocalizedName(key)) {
+      delete langBucket[key];
+    } else {
+      langBucket[key] = trimmed;
+    }
+    const next = { ...customNames, [language]: langBucket };
+    persistCustomNames(next);
+    setRenamingKey(null);
+    setRenameDraft("");
+  };
+
   const selectedTemplate = selectedTemplateKey
     ? CROP_TEMPLATES.find((t) => t.key === selectedTemplateKey) ?? null
     : null;
   const selectedTemplateLocalizedName = selectedTemplateKey
-    ? (copy.farmCalendar.templates.cropNames as Record<string, string>)[selectedTemplateKey] ?? selectedTemplate?.name ?? ""
+    ? getDisplayName(selectedTemplateKey)
     : "";
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [templateStep, setTemplateStep] = useState<"choose" | "edit">("choose");
