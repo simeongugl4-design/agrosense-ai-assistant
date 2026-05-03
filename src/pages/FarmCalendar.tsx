@@ -272,7 +272,7 @@ export default function FarmCalendar() {
   };
 
   const resetTemplateDialog = () => {
-    setSelectedTemplate(null);
+    setSelectedTemplateKey(null);
     setEditableTasks([]);
     setTemplateStep("choose");
     setTemplatePlot("");
