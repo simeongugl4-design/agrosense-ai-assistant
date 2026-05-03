@@ -153,7 +153,13 @@ export default function FarmCalendar() {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [templateStartDate, setTemplateStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [selectedTemplate, setSelectedTemplate] = useState<CropTemplate | null>(null);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<CropTemplateKey | null>(null);
+  const selectedTemplate = selectedTemplateKey
+    ? CROP_TEMPLATES.find((t) => t.key === selectedTemplateKey) ?? null
+    : null;
+  const selectedTemplateLocalizedName = selectedTemplateKey
+    ? (copy.farmCalendar.templates.cropNames as Record<string, string>)[selectedTemplateKey] ?? selectedTemplate?.name ?? ""
+    : "";
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [templateStep, setTemplateStep] = useState<"choose" | "edit">("choose");
   const [editableTasks, setEditableTasks] = useState<Array<{
@@ -246,8 +252,8 @@ export default function FarmCalendar() {
     });
   };
 
-  const handleSelectTemplate = (template: CropTemplate) => {
-    setSelectedTemplate(template);
+  const handleSelectTemplate = (template: CropTemplate & { key: CropTemplateKey }) => {
+    setSelectedTemplateKey(template.key);
     setEditableTasks(buildEditableTasks(template, templateStartDate));
   };
 
@@ -266,7 +272,7 @@ export default function FarmCalendar() {
   };
 
   const resetTemplateDialog = () => {
-    setSelectedTemplate(null);
+    setSelectedTemplateKey(null);
     setEditableTasks([]);
     setTemplateStep("choose");
     setTemplatePlot("");
@@ -299,8 +305,7 @@ export default function FarmCalendar() {
       console.error("Template error:", error);
       toast({ variant: "destructive", title: copy.farmCalendar.templates.failedApply });
     } else {
-      const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[(selectedTemplate as CropTemplate & { key: CropTemplateKey }).key] ?? selectedTemplate.name;
-      toast({ title: formatDashboardText(copy.farmCalendar.templates.appliedSuccess, { name: localizedName, count: eventsToInsert.length }) });
+      toast({ title: formatDashboardText(copy.farmCalendar.templates.appliedSuccess, { name: selectedTemplateLocalizedName, count: eventsToInsert.length }) });
       setIsTemplateDialogOpen(false);
       resetTemplateDialog();
       void fetchEvents();
@@ -459,9 +464,7 @@ export default function FarmCalendar() {
                     {templateStep === "choose"
                       ? copy.farmCalendar.templates.dialogTitle
                       : formatDashboardText(copy.farmCalendar.templates.reviewTitle, {
-                          name: selectedTemplate
-                            ? (copy.farmCalendar.templates.cropNames as Record<string, string>)[(selectedTemplate as CropTemplate & { key: CropTemplateKey }).key] ?? selectedTemplate.name
-                            : "",
+                          name: selectedTemplateLocalizedName,
                         })}
                   </DialogTitle>
                 </DialogHeader>
@@ -473,7 +476,7 @@ export default function FarmCalendar() {
                     </p>
                     <div className="space-y-3">
                       {CROP_TEMPLATES.map((template) => {
-                        const isSelected = selectedTemplate?.name === template.name;
+                        const isSelected = selectedTemplateKey === template.key;
                         const counts = template.events.reduce<Record<string, number>>((acc, e) => {
                           acc[e.event_type] = (acc[e.event_type] || 0) + 1;
                           return acc;
@@ -481,9 +484,10 @@ export default function FarmCalendar() {
                         const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[template.key] ?? template.name;
                         return (
                           <button
-                            key={template.name}
+                            key={template.key}
                             onClick={() => handleSelectTemplate(template)}
-                            className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
+                            aria-pressed={isSelected}
+                            className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/40" : "border-border hover:border-primary/30"}`}
                           >
                             <div className="flex items-center justify-between">
                               <div>
