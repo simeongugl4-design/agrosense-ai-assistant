@@ -47,6 +47,9 @@ const App = () => (
               <Route path="/dashboard/marketplace" element={<Marketplace />} />
               <Route path="/dashboard/settings" element={<Settings />} />
               <Route path="/dashboard/soil" element={<SoilAnalysis />} />
+              <Route path="/dashboard/hub" element={<Hub />} />
+              <Route path="/dashboard/community" element={<Community />} />
+              <Route path="/dashboard/cooperatives" element={<Cooperatives />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
