@@ -529,18 +529,66 @@ export default function FarmCalendar() {
                           acc[e.event_type] = (acc[e.event_type] || 0) + 1;
                           return acc;
                         }, {});
-                        const localizedName = (copy.farmCalendar.templates.cropNames as Record<string, string>)[template.key] ?? template.name;
+                        const displayName = getDisplayName(template.key);
+                        const defaultName = getDefaultLocalizedName(template.key);
+                        const isCustom = displayName !== defaultName;
+                        const isRenaming = renamingKey === template.key;
                         return (
-                          <button
+                          <div
                             key={template.key}
-                            onClick={() => handleSelectTemplate(template)}
+                            role="button"
+                            tabIndex={0}
                             aria-pressed={isSelected}
-                            className={`w-full text-left p-4 rounded-xl border transition-all ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/40" : "border-border hover:border-primary/30"}`}
+                            onClick={() => { if (!isRenaming) handleSelectTemplate(template); }}
+                            onKeyDown={(e) => {
+                              if (isRenaming) return;
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                handleSelectTemplate(template);
+                              }
+                            }}
+                            className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/40" : "border-border hover:border-primary/30"}`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium text-foreground">{localizedName}</p>
-                                <p className="text-xs text-muted-foreground">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                {isRenaming ? (
+                                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <Input
+                                      autoFocus
+                                      value={renameDraft}
+                                      onChange={(e) => setRenameDraft(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") { e.preventDefault(); saveRename(template.key); }
+                                        if (e.key === "Escape") { e.preventDefault(); setRenamingKey(null); setRenameDraft(""); }
+                                      }}
+                                      className="h-8"
+                                    />
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => saveRename(template.key)} aria-label="Save">
+                                      <Check className="w-4 h-4" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => { setRenamingKey(null); setRenameDraft(""); }} aria-label="Cancel">
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-foreground truncate">{displayName}</p>
+                                    {isCustom && (
+                                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                                        {defaultName}
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setRenamingKey(template.key); setRenameDraft(displayName); }}
+                                      className="text-muted-foreground hover:text-foreground p-1 rounded"
+                                      aria-label={`Rename ${displayName}`}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">
                                   {formatDashboardText(copy.farmCalendar.templates.tasksCount, {
                                     count: template.events.length,
                                     days: template.events[template.events.length - 1].dayOffset,
@@ -555,7 +603,7 @@ export default function FarmCalendar() {
                               </div>
                               <Zap className={`w-5 h-5 flex-shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
