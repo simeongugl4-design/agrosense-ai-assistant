@@ -19,6 +19,9 @@ import Marketplace from "./pages/Marketplace";
 import Settings from "./pages/Settings";
 import SoilAnalysis from "./pages/SoilAnalysis";
 import NotFound from "./pages/NotFound";
+import Hub from "./pages/Hub";
+import Community from "./pages/Community";
+import Cooperatives from "./pages/Cooperatives";
 
 const queryClient = new QueryClient();
 
