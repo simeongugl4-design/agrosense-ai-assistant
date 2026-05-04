@@ -307,6 +307,42 @@ export async function getIrrigationPlan(params: {
   return data;
 }
 
+// Personalized daily plan
+export interface DailyPlan {
+  greeting: string;
+  summary: string;
+  actions: Array<{
+    title: string;
+    detail: string;
+    priority: "high" | "medium" | "low";
+    category: "irrigation" | "pest" | "fertilizer" | "harvest" | "planting" | "soil" | "market" | "weather" | "general";
+    timing: string;
+  }>;
+  alerts: Array<{ type: "warning" | "info" | "success"; title: string; message: string }>;
+}
+
+export async function getDailyPlan(input: {
+  language?: string;
+  country?: string;
+  location?: string;
+  primaryCrop?: string;
+  soilType?: string;
+  farmSize?: string;
+  weather?: {
+    temp?: number;
+    condition?: string;
+    humidity?: number;
+    rainChanceToday?: number;
+    rainChanceTomorrow?: number;
+  };
+  upcomingTasks?: Array<{ title: string; date: string; priority: string; crop?: string | null }>;
+}): Promise<DailyPlan> {
+  const { data, error } = await supabase.functions.invoke("daily-plan", { body: input });
+  if (error) throw new Error(error.message || "Failed to build daily plan");
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+  return data as DailyPlan;
+}
+
 // Analyze soil from photo
 export async function analyzeSoil(params: {
   imageBase64: string;
