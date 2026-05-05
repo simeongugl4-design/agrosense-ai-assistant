@@ -22,6 +22,23 @@ interface ChemicalProduct {
   safetyPrecautions: string;
 }
 
+interface TreatmentStep {
+  step: number;
+  title: string;
+  action: string;
+  timing: string;
+  materials?: string[];
+  expectedOutcome?: string;
+}
+
+interface PreventionStep {
+  step: number;
+  title: string;
+  action: string;
+  timing: string;
+  frequency?: string;
+}
+
 interface DiseaseResult {
   cropIdentification: {
     name: string;
@@ -32,8 +49,16 @@ interface DiseaseResult {
   };
   disease: string;
   confidence: number;
+  confidenceBreakdown?: {
+    visualMatch: number;
+    symptomMatch: number;
+    contextMatch: number;
+    rationale: string;
+  };
   severity: string;
   symptoms: string[];
+  differentialDiagnoses?: { name: string; confidence: number; distinguishingFeature: string }[];
+  similarCases?: { scenario: string; outcome: string; timeToRecover: string }[];
   diseaseInfo: {
     causedBy: string;
     type: string;
@@ -43,9 +68,13 @@ interface DiseaseResult {
   };
   treatment: {
     immediate: string;
+    stepByStep?: TreatmentStep[];
     organic: string;
     chemical: { products: ChemicalProduct[] };
+    estimatedRecoveryTime?: string;
+    successRate?: number;
   };
+  preventionPlan?: { summary: string; steps: PreventionStep[] };
   prevention: string;
   cropInfo: {
     optimalConditions: string;
