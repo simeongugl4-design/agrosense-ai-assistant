@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.soil-analysis]
 verify_jwt = false
+
+[functions.safety-checker]
+verify_jwt = false
