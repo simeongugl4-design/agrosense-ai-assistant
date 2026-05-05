@@ -77,6 +77,11 @@ Provide a COMPLETE analysis in this JSON format:
   },
   "treatment": {
     "immediate": "What to do RIGHT NOW",
+    "stepByStep": [
+      { "step": 1, "title": "Short action title", "action": "Detailed action", "timing": "Day 1 / morning / etc.", "materials": ["item 1", "item 2"], "expectedOutcome": "What you should observe" },
+      { "step": 2, "title": "...", "action": "...", "timing": "Day 2-3", "materials": [], "expectedOutcome": "..." },
+      { "step": 3, "title": "...", "action": "...", "timing": "Week 1", "materials": [], "expectedOutcome": "..." }
+    ],
     "organic": "Organic treatment with exact dosages and application method",
     "chemical": {
       "products": [
@@ -90,9 +95,19 @@ Provide a COMPLETE analysis in this JSON format:
           "safetyPrecautions": "Safety measures"
         }
       ]
-    }
+    },
+    "estimatedRecoveryTime": "e.g. 2-3 weeks with treatment",
+    "successRate": 80
   },
-  "prevention": "How to prevent in future seasons",
+  "preventionPlan": {
+    "summary": "Short prevention overview",
+    "steps": [
+      { "step": 1, "title": "...", "action": "...", "timing": "Pre-planting", "frequency": "Once" },
+      { "step": 2, "title": "...", "action": "...", "timing": "Vegetative stage", "frequency": "Weekly" },
+      { "step": 3, "title": "...", "action": "...", "timing": "Flowering", "frequency": "Bi-weekly" }
+    ]
+  },
+  "prevention": "Short prevention summary (legacy field)",
   "cropInfo": {
     "optimalConditions": "Ideal growing conditions",
     "waterNeeds": "Water requirements",
