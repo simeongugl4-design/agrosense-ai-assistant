@@ -162,6 +162,11 @@ Provide diagnosis in this JSON format:
   },
   "treatment": {
     "immediate": "What to do now",
+    "stepByStep": [
+      { "step": 1, "title": "...", "action": "...", "timing": "Day 1", "materials": [], "expectedOutcome": "..." },
+      { "step": 2, "title": "...", "action": "...", "timing": "Day 2-3", "materials": [], "expectedOutcome": "..." },
+      { "step": 3, "title": "...", "action": "...", "timing": "Week 1", "materials": [], "expectedOutcome": "..." }
+    ],
     "organic": "Organic options with dosages",
     "chemical": {
       "products": [
@@ -175,7 +180,16 @@ Provide diagnosis in this JSON format:
           "safetyPrecautions": "Safety"
         }
       ]
-    }
+    },
+    "estimatedRecoveryTime": "e.g. 2 weeks",
+    "successRate": 75
+  },
+  "preventionPlan": {
+    "summary": "...",
+    "steps": [
+      { "step": 1, "title": "...", "action": "...", "timing": "Pre-planting", "frequency": "Once" },
+      { "step": 2, "title": "...", "action": "...", "timing": "Vegetative", "frequency": "Weekly" }
+    ]
   },
   "prevention": "Prevention tips",
   "cropInfo": {
