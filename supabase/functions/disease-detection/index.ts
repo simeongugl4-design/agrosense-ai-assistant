@@ -52,8 +52,22 @@ Provide a COMPLETE analysis in this JSON format:
   },
   "disease": "Disease/Issue Name (or 'Healthy' if none found)",
   "confidence": 85,
+  "confidenceBreakdown": {
+    "visualMatch": 90,
+    "symptomMatch": 80,
+    "contextMatch": 75,
+    "rationale": "1-2 sentence explanation of why this confidence level"
+  },
   "severity": "Mild/Moderate/Severe/None",
   "symptoms": ["Visible symptom 1", "Visible symptom 2"],
+  "differentialDiagnoses": [
+    { "name": "Alternative disease 1", "confidence": 60, "distinguishingFeature": "How to tell apart" },
+    { "name": "Alternative disease 2", "confidence": 40, "distinguishingFeature": "How to tell apart" }
+  ],
+  "similarCases": [
+    { "scenario": "Realistic farmer case (region/crop/conditions)", "outcome": "What worked", "timeToRecover": "e.g. 2 weeks" },
+    { "scenario": "Another similar case", "outcome": "What worked", "timeToRecover": "e.g. 3 weeks" }
+  ],
   "diseaseInfo": {
     "causedBy": "Pathogen/Pest/Deficiency name",
     "type": "Fungal/Bacterial/Viral/Pest/Nutrient Deficiency",
@@ -63,6 +77,11 @@ Provide a COMPLETE analysis in this JSON format:
   },
   "treatment": {
     "immediate": "What to do RIGHT NOW",
+    "stepByStep": [
+      { "step": 1, "title": "Short action title", "action": "Detailed action", "timing": "Day 1 / morning / etc.", "materials": ["item 1", "item 2"], "expectedOutcome": "What you should observe" },
+      { "step": 2, "title": "...", "action": "...", "timing": "Day 2-3", "materials": [], "expectedOutcome": "..." },
+      { "step": 3, "title": "...", "action": "...", "timing": "Week 1", "materials": [], "expectedOutcome": "..." }
+    ],
     "organic": "Organic treatment with exact dosages and application method",
     "chemical": {
       "products": [
@@ -76,9 +95,19 @@ Provide a COMPLETE analysis in this JSON format:
           "safetyPrecautions": "Safety measures"
         }
       ]
-    }
+    },
+    "estimatedRecoveryTime": "e.g. 2-3 weeks with treatment",
+    "successRate": 80
   },
-  "prevention": "How to prevent in future seasons",
+  "preventionPlan": {
+    "summary": "Short prevention overview",
+    "steps": [
+      { "step": 1, "title": "...", "action": "...", "timing": "Pre-planting", "frequency": "Once" },
+      { "step": 2, "title": "...", "action": "...", "timing": "Vegetative stage", "frequency": "Weekly" },
+      { "step": 3, "title": "...", "action": "...", "timing": "Flowering", "frequency": "Bi-weekly" }
+    ]
+  },
+  "prevention": "Short prevention summary (legacy field)",
   "cropInfo": {
     "optimalConditions": "Ideal growing conditions",
     "waterNeeds": "Water requirements",
@@ -115,8 +144,15 @@ Provide diagnosis in this JSON format:
   },
   "disease": "Most Likely Disease/Issue",
   "confidence": 70,
+  "confidenceBreakdown": { "visualMatch": 0, "symptomMatch": 70, "contextMatch": 60, "rationale": "Based on text only" },
   "severity": "Mild/Moderate/Severe",
   "symptoms": ["symptom 1", "symptom 2"],
+  "differentialDiagnoses": [
+    { "name": "Alt 1", "confidence": 50, "distinguishingFeature": "..." }
+  ],
+  "similarCases": [
+    { "scenario": "...", "outcome": "...", "timeToRecover": "..." }
+  ],
   "diseaseInfo": {
     "causedBy": "Pathogen name",
     "type": "Fungal/Bacterial/Viral/Pest/Nutrient",
@@ -126,6 +162,11 @@ Provide diagnosis in this JSON format:
   },
   "treatment": {
     "immediate": "What to do now",
+    "stepByStep": [
+      { "step": 1, "title": "...", "action": "...", "timing": "Day 1", "materials": [], "expectedOutcome": "..." },
+      { "step": 2, "title": "...", "action": "...", "timing": "Day 2-3", "materials": [], "expectedOutcome": "..." },
+      { "step": 3, "title": "...", "action": "...", "timing": "Week 1", "materials": [], "expectedOutcome": "..." }
+    ],
     "organic": "Organic options with dosages",
     "chemical": {
       "products": [
@@ -139,7 +180,16 @@ Provide diagnosis in this JSON format:
           "safetyPrecautions": "Safety"
         }
       ]
-    }
+    },
+    "estimatedRecoveryTime": "e.g. 2 weeks",
+    "successRate": 75
+  },
+  "preventionPlan": {
+    "summary": "...",
+    "steps": [
+      { "step": 1, "title": "...", "action": "...", "timing": "Pre-planting", "frequency": "Once" },
+      { "step": 2, "title": "...", "action": "...", "timing": "Vegetative", "frequency": "Weekly" }
+    ]
   },
   "prevention": "Prevention tips",
   "cropInfo": {
@@ -206,7 +256,11 @@ Return ONLY valid JSON.`
         severity: "Unknown",
         symptoms: ["Please provide clearer image or more details"],
         diseaseInfo: { causedBy: "Unknown", type: "Unknown", spreadMethod: "Unknown", affectedParts: [], progressionRate: "Unknown" },
-        treatment: { immediate: "Isolate affected plants", organic: "Consult local agricultural officer", chemical: { products: [] } },
+        treatment: { immediate: "Isolate affected plants", stepByStep: [], organic: "Consult local agricultural officer", chemical: { products: [] }, estimatedRecoveryTime: "Unknown", successRate: 0 },
+        confidenceBreakdown: { visualMatch: 0, symptomMatch: 0, contextMatch: 0, rationale: "Inconclusive" },
+        differentialDiagnoses: [],
+        similarCases: [],
+        preventionPlan: { summary: "", steps: [] },
         prevention: "Regular monitoring helps",
         cropInfo: { optimalConditions: "", waterNeeds: "", nutrientNeeds: "", commonPests: [], companionPlants: [], harvestIndicators: "" },
         expertNeeded: true,

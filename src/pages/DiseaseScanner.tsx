@@ -4,7 +4,8 @@ import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, Leaf, AlertTriangle, CheckCircle, Loader2, Stethoscope, FlaskConical, Sprout, Info } from "lucide-react";
+import { Camera, Upload, Leaf, AlertTriangle, CheckCircle, Loader2, Stethoscope, FlaskConical, Sprout, Info, ListChecks, ShieldCheck, Users, TrendingUp } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -21,6 +22,23 @@ interface ChemicalProduct {
   safetyPrecautions: string;
 }
 
+interface TreatmentStep {
+  step: number;
+  title: string;
+  action: string;
+  timing: string;
+  materials?: string[];
+  expectedOutcome?: string;
+}
+
+interface PreventionStep {
+  step: number;
+  title: string;
+  action: string;
+  timing: string;
+  frequency?: string;
+}
+
 interface DiseaseResult {
   cropIdentification: {
     name: string;
@@ -31,8 +49,16 @@ interface DiseaseResult {
   };
   disease: string;
   confidence: number;
+  confidenceBreakdown?: {
+    visualMatch: number;
+    symptomMatch: number;
+    contextMatch: number;
+    rationale: string;
+  };
   severity: string;
   symptoms: string[];
+  differentialDiagnoses?: { name: string; confidence: number; distinguishingFeature: string }[];
+  similarCases?: { scenario: string; outcome: string; timeToRecover: string }[];
   diseaseInfo: {
     causedBy: string;
     type: string;
@@ -42,9 +68,13 @@ interface DiseaseResult {
   };
   treatment: {
     immediate: string;
+    stepByStep?: TreatmentStep[];
     organic: string;
     chemical: { products: ChemicalProduct[] };
+    estimatedRecoveryTime?: string;
+    successRate?: number;
   };
+  preventionPlan?: { summary: string; steps: PreventionStep[] };
   prevention: string;
   cropInfo: {
     optimalConditions: string;
@@ -249,10 +279,86 @@ export default function DiseaseScanner() {
                     )}
                   </div>
 
+                  {result.confidenceBreakdown && (
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                      <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+                        <TrendingUp className="w-4 h-4 text-primary" /> Confidence breakdown
+                      </h4>
+                      <div className="space-y-2 text-xs">
+                        {[
+                          { label: "Visual match", value: result.confidenceBreakdown.visualMatch },
+                          { label: "Symptom match", value: result.confidenceBreakdown.symptomMatch },
+                          { label: "Context match", value: result.confidenceBreakdown.contextMatch },
+                        ].map((b) => (
+                          <div key={b.label}>
+                            <div className="flex justify-between mb-1"><span>{b.label}</span><span className="font-medium">{b.value}%</span></div>
+                            <Progress value={b.value} className="h-1.5" />
+                          </div>
+                        ))}
+                      </div>
+                      {result.confidenceBreakdown.rationale && (
+                        <p className="text-xs text-muted-foreground mt-3 italic">{result.confidenceBreakdown.rationale}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {result.differentialDiagnoses && result.differentialDiagnoses.length > 0 && (
+                    <div className="p-4 rounded-xl bg-muted/40 border border-border">
+                      <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+                        <ListChecks className="w-4 h-4 text-primary" /> Other possibilities
+                      </h4>
+                      <div className="space-y-2">
+                        {result.differentialDiagnoses.map((d, i) => (
+                          <div key={i} className="p-2 rounded-lg bg-background border border-border">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium">{d.name}</span>
+                              <span className="text-xs text-muted-foreground">{d.confidence}%</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{d.distinguishingFeature}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
                     <h4 className="font-semibold text-warning flex items-center gap-2 mb-2">⚡ {copy.diseaseScanner.labels.immediateAction}</h4>
                     <p className="text-sm text-foreground leading-relaxed">{result.treatment?.immediate}</p>
                   </div>
+
+                  {result.treatment?.stepByStep && result.treatment.stepByStep.length > 0 && (
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-foreground flex items-center gap-2">
+                          <ListChecks className="w-4 h-4 text-primary" /> Step-by-step treatment plan
+                        </h4>
+                        {result.treatment.successRate ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">{result.treatment.successRate}% success</span>
+                        ) : null}
+                      </div>
+                      <ol className="space-y-3">
+                        {result.treatment.stepByStep.map((s) => (
+                          <li key={s.step} className="flex gap-3">
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">{s.step}</div>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-foreground">{s.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">⏰ {s.timing}</p>
+                              <p className="text-sm text-foreground mt-1">{s.action}</p>
+                              {s.materials && s.materials.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">🧰 {s.materials.join(", ")}</p>
+                              )}
+                              {s.expectedOutcome && (
+                                <p className="text-xs text-success mt-1">✓ {s.expectedOutcome}</p>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                      {result.treatment.estimatedRecoveryTime && (
+                        <p className="text-xs text-muted-foreground mt-3">Estimated recovery: <span className="font-medium text-foreground">{result.treatment.estimatedRecoveryTime}</span></p>
+                      )}
+                    </div>
+                  )}
 
                   {result.treatment?.chemical?.products?.length > 0 && (
                     <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
@@ -302,8 +408,39 @@ export default function DiseaseScanner() {
 
                   <div className="p-4 rounded-xl bg-muted/50 border border-border">
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-2"><Leaf className="w-4 h-4 text-primary" /> {copy.diseaseScanner.labels.prevention}</h4>
-                    <p className="text-sm text-foreground leading-relaxed">{result.prevention}</p>
+                    <p className="text-sm text-foreground leading-relaxed">{result.preventionPlan?.summary || result.prevention}</p>
+                    {result.preventionPlan?.steps && result.preventionPlan.steps.length > 0 && (
+                      <ol className="mt-3 space-y-2">
+                        {result.preventionPlan.steps.map((s) => (
+                          <li key={s.step} className="flex gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-success/20 text-success text-xs font-bold flex items-center justify-center">{s.step}</div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground">{s.title}</p>
+                              <p className="text-xs text-muted-foreground">⏰ {s.timing}{s.frequency ? ` · ${s.frequency}` : ""}</p>
+                              <p className="text-sm text-foreground mt-0.5">{s.action}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
                   </div>
+
+                  {result.similarCases && result.similarCases.length > 0 && (
+                    <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
+                      <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+                        <Users className="w-4 h-4 text-accent" /> Similar cases
+                      </h4>
+                      <div className="space-y-2">
+                        {result.similarCases.map((c, i) => (
+                          <div key={i} className="p-3 rounded-lg bg-background border border-border">
+                            <p className="text-sm text-foreground">{c.scenario}</p>
+                            <p className="text-xs text-success mt-1">✓ {c.outcome}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">⏱ {c.timeToRecover}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {result.expertNeeded && (
                     <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30">
