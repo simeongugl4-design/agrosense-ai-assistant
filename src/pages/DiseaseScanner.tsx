@@ -408,8 +408,39 @@ export default function DiseaseScanner() {
 
                   <div className="p-4 rounded-xl bg-muted/50 border border-border">
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-2"><Leaf className="w-4 h-4 text-primary" /> {copy.diseaseScanner.labels.prevention}</h4>
-                    <p className="text-sm text-foreground leading-relaxed">{result.prevention}</p>
+                    <p className="text-sm text-foreground leading-relaxed">{result.preventionPlan?.summary || result.prevention}</p>
+                    {result.preventionPlan?.steps && result.preventionPlan.steps.length > 0 && (
+                      <ol className="mt-3 space-y-2">
+                        {result.preventionPlan.steps.map((s) => (
+                          <li key={s.step} className="flex gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-success/20 text-success text-xs font-bold flex items-center justify-center">{s.step}</div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground">{s.title}</p>
+                              <p className="text-xs text-muted-foreground">⏰ {s.timing}{s.frequency ? ` · ${s.frequency}` : ""}</p>
+                              <p className="text-sm text-foreground mt-0.5">{s.action}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
                   </div>
+
+                  {result.similarCases && result.similarCases.length > 0 && (
+                    <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
+                      <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+                        <Users className="w-4 h-4 text-accent" /> Similar cases
+                      </h4>
+                      <div className="space-y-2">
+                        {result.similarCases.map((c, i) => (
+                          <div key={i} className="p-3 rounded-lg bg-background border border-border">
+                            <p className="text-sm text-foreground">{c.scenario}</p>
+                            <p className="text-xs text-success mt-1">✓ {c.outcome}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">⏱ {c.timeToRecover}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {result.expertNeeded && (
                     <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30">
