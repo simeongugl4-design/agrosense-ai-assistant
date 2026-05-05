@@ -52,8 +52,22 @@ Provide a COMPLETE analysis in this JSON format:
   },
   "disease": "Disease/Issue Name (or 'Healthy' if none found)",
   "confidence": 85,
+  "confidenceBreakdown": {
+    "visualMatch": 90,
+    "symptomMatch": 80,
+    "contextMatch": 75,
+    "rationale": "1-2 sentence explanation of why this confidence level"
+  },
   "severity": "Mild/Moderate/Severe/None",
   "symptoms": ["Visible symptom 1", "Visible symptom 2"],
+  "differentialDiagnoses": [
+    { "name": "Alternative disease 1", "confidence": 60, "distinguishingFeature": "How to tell apart" },
+    { "name": "Alternative disease 2", "confidence": 40, "distinguishingFeature": "How to tell apart" }
+  ],
+  "similarCases": [
+    { "scenario": "Realistic farmer case (region/crop/conditions)", "outcome": "What worked", "timeToRecover": "e.g. 2 weeks" },
+    { "scenario": "Another similar case", "outcome": "What worked", "timeToRecover": "e.g. 3 weeks" }
+  ],
   "diseaseInfo": {
     "causedBy": "Pathogen/Pest/Deficiency name",
     "type": "Fungal/Bacterial/Viral/Pest/Nutrient Deficiency",
