@@ -144,8 +144,15 @@ Provide diagnosis in this JSON format:
   },
   "disease": "Most Likely Disease/Issue",
   "confidence": 70,
+  "confidenceBreakdown": { "visualMatch": 0, "symptomMatch": 70, "contextMatch": 60, "rationale": "Based on text only" },
   "severity": "Mild/Moderate/Severe",
   "symptoms": ["symptom 1", "symptom 2"],
+  "differentialDiagnoses": [
+    { "name": "Alt 1", "confidence": 50, "distinguishingFeature": "..." }
+  ],
+  "similarCases": [
+    { "scenario": "...", "outcome": "...", "timeToRecover": "..." }
+  ],
   "diseaseInfo": {
     "causedBy": "Pathogen name",
     "type": "Fungal/Bacterial/Viral/Pest/Nutrient",
