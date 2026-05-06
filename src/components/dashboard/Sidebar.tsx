@@ -34,6 +34,7 @@ export function Sidebar() {
         { icon: FlaskConical, label: copy.sidebar.fertilizer, path: "/dashboard/fertilizer" },
         { icon: MessageCircle, label: copy.sidebar.aiAssistant, path: "/dashboard/assistant" },
         { icon: ShieldCheck, label: "Safety Checker", path: "/dashboard/safety" },
+        { icon: Activity, label: "Disease Follow-ups", path: "/dashboard/followups" },
       ],
     },
     {
