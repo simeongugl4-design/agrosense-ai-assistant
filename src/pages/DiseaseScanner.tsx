@@ -1,16 +1,18 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, Leaf, AlertTriangle, CheckCircle, Loader2, Stethoscope, FlaskConical, Sprout, Info, ListChecks, ShieldCheck, Users, TrendingUp } from "lucide-react";
+import { Camera, Upload, Leaf, AlertTriangle, CheckCircle, Loader2, Stethoscope, FlaskConical, Sprout, Info, ListChecks, ShieldCheck, Users, TrendingUp, Activity } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Badge } from "@/components/ui/badge";
 import { useDashboardTranslations } from "@/hooks/useDashboardTranslations";
+import { getGuestId, getGuestName } from "@/lib/guest-id";
 
 interface ChemicalProduct {
   name: string;
