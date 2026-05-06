@@ -301,6 +301,24 @@ export default function DiseaseScanner() {
 
               {result && (
                 <div className="space-y-4">
+                  <div className="p-3 rounded-xl bg-accent/5 border border-accent/20 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-2 text-sm">
+                      <Activity className="w-4 h-4 text-accent mt-0.5" />
+                      <div>
+                        <p className="font-medium text-foreground">Track this case over time</p>
+                        <p className="text-xs text-muted-foreground">Schedule check-ins and re-upload photos to monitor recovery.</p>
+                      </div>
+                    </div>
+                    {trackedCaseId ? (
+                      <Link to="/dashboard/followups">
+                        <Button size="sm" variant="outline">Open follow-ups</Button>
+                      </Link>
+                    ) : (
+                      <Button size="sm" onClick={trackCase} disabled={tracking}>
+                        {tracking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Track this case"}
+                      </Button>
+                    )}
+                  </div>
                   {result.cropIdentification && (
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
