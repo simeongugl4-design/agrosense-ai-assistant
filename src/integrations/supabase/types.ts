@@ -200,6 +200,110 @@ export type Database = {
           },
         ]
       }
+      disease_cases: {
+        Row: {
+          created_at: string
+          crop: string
+          disease: string
+          id: string
+          initial_confidence: number | null
+          initial_photo_url: string | null
+          initial_result: Json | null
+          initial_severity: string | null
+          initial_summary: string | null
+          owner_id: string
+          owner_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crop: string
+          disease: string
+          id?: string
+          initial_confidence?: number | null
+          initial_photo_url?: string | null
+          initial_result?: Json | null
+          initial_severity?: string | null
+          initial_summary?: string | null
+          owner_id: string
+          owner_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crop?: string
+          disease?: string
+          id?: string
+          initial_confidence?: number | null
+          initial_photo_url?: string | null
+          initial_result?: Json | null
+          initial_severity?: string | null
+          initial_summary?: string | null
+          owner_id?: string
+          owner_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      disease_followups: {
+        Row: {
+          ai_assessment: Json | null
+          ai_summary: string | null
+          case_id: string
+          completed_at: string | null
+          created_at: string
+          farmer_progress_rating: string | null
+          id: string
+          notes: string | null
+          owner_id: string
+          photo_url: string | null
+          scheduled_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_assessment?: Json | null
+          ai_summary?: string | null
+          case_id: string
+          completed_at?: string | null
+          created_at?: string
+          farmer_progress_rating?: string | null
+          id?: string
+          notes?: string | null
+          owner_id: string
+          photo_url?: string | null
+          scheduled_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_assessment?: Json | null
+          ai_summary?: string | null
+          case_id?: string
+          completed_at?: string | null
+          created_at?: string
+          farmer_progress_rating?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string
+          photo_url?: string | null
+          scheduled_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disease_followups_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "disease_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_events: {
         Row: {
           created_at: string
