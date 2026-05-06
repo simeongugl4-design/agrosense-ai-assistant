@@ -96,9 +96,74 @@ export default function DiseaseScanner() {
   const [result, setResult] = useState<DiseaseResult | null>(null);
   const [symptoms, setSymptoms] = useState("");
   const [cropType, setCropType] = useState("");
+  const [trackedCaseId, setTrackedCaseId] = useState<string | null>(null);
+  const [tracking, setTracking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { selectedLanguage } = useLanguage();
   const { copy, format } = useDashboardTranslations();
+
+  const trackCase = async () => {
+    if (!result) return;
+    setTracking(true);
+    try {
+      const guestId = getGuestId();
+      let photoUrl: string | null = null;
+      if (selectedImage && selectedImage.startsWith("data:")) {
+        const blob = await (await fetch(selectedImage)).blob();
+        const path = `${guestId}/initial-${Date.now()}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from("disease-photos")
+          .upload(path, blob, { contentType: blob.type || "image/jpeg" });
+        if (!upErr) {
+          photoUrl = supabase.storage.from("disease-photos").getPublicUrl(path).data.publicUrl;
+        }
+      }
+      const summary = [
+        result.treatment?.immediate,
+        result.treatment?.estimatedRecoveryTime
+          ? `Recovery: ${result.treatment.estimatedRecoveryTime}`
+          : "",
+      ].filter(Boolean).join(" ");
+
+      const { data, error } = await supabase
+        .from("disease_cases")
+        .insert({
+          owner_id: guestId,
+          owner_name: getGuestName(),
+          crop: result.cropIdentification?.name || cropType || "Unknown crop",
+          disease: result.disease,
+          initial_severity: result.severity,
+          initial_confidence: result.confidence,
+          initial_photo_url: photoUrl,
+          initial_summary: summary,
+          initial_result: result as any,
+          status: "active",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      const next = new Date();
+      next.setDate(next.getDate() + 5);
+      await supabase.from("disease_followups").insert({
+        case_id: data.id,
+        owner_id: guestId,
+        scheduled_date: next.toISOString().slice(0, 10),
+        status: "scheduled",
+      });
+
+      setTrackedCaseId(data.id);
+      toast({ title: "Case tracked", description: "First check-in scheduled in 5 days." });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Could not track case",
+        description: e instanceof Error ? e.message : "Try again",
+      });
+    } finally {
+      setTracking(false);
+    }
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
