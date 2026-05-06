@@ -188,6 +188,7 @@ export default function DiseaseScanner() {
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResult(null);
+    setTrackedCaseId(null);
     try {
       const { data, error } = await supabase.functions.invoke("disease-detection", {
         body: { imageBase64: selectedImage || undefined, cropType: cropType || undefined, symptoms: symptoms || undefined, language: selectedLanguage },
