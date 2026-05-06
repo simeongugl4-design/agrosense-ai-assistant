@@ -23,6 +23,7 @@ import Hub from "./pages/Hub";
 import Community from "./pages/Community";
 import Cooperatives from "./pages/Cooperatives";
 import SafetyChecker from "./pages/SafetyChecker";
+import DiseaseFollowups from "./pages/DiseaseFollowups";
 
 const queryClient = new QueryClient();
 
