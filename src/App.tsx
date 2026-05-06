@@ -23,6 +23,7 @@ import Hub from "./pages/Hub";
 import Community from "./pages/Community";
 import Cooperatives from "./pages/Cooperatives";
 import SafetyChecker from "./pages/SafetyChecker";
+import DiseaseFollowups from "./pages/DiseaseFollowups";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/dashboard/community" element={<Community />} />
               <Route path="/dashboard/cooperatives" element={<Cooperatives />} />
               <Route path="/dashboard/safety" element={<SafetyChecker />} />
+              <Route path="/dashboard/followups" element={<DiseaseFollowups />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

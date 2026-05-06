@@ -1,16 +1,18 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, Leaf, AlertTriangle, CheckCircle, Loader2, Stethoscope, FlaskConical, Sprout, Info, ListChecks, ShieldCheck, Users, TrendingUp } from "lucide-react";
+import { Camera, Upload, Leaf, AlertTriangle, CheckCircle, Loader2, Stethoscope, FlaskConical, Sprout, Info, ListChecks, ShieldCheck, Users, TrendingUp, Activity } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Badge } from "@/components/ui/badge";
 import { useDashboardTranslations } from "@/hooks/useDashboardTranslations";
+import { getGuestId, getGuestName } from "@/lib/guest-id";
 
 interface ChemicalProduct {
   name: string;
@@ -94,9 +96,74 @@ export default function DiseaseScanner() {
   const [result, setResult] = useState<DiseaseResult | null>(null);
   const [symptoms, setSymptoms] = useState("");
   const [cropType, setCropType] = useState("");
+  const [trackedCaseId, setTrackedCaseId] = useState<string | null>(null);
+  const [tracking, setTracking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { selectedLanguage } = useLanguage();
   const { copy, format } = useDashboardTranslations();
+
+  const trackCase = async () => {
+    if (!result) return;
+    setTracking(true);
+    try {
+      const guestId = getGuestId();
+      let photoUrl: string | null = null;
+      if (selectedImage && selectedImage.startsWith("data:")) {
+        const blob = await (await fetch(selectedImage)).blob();
+        const path = `${guestId}/initial-${Date.now()}.jpg`;
+        const { error: upErr } = await supabase.storage
+          .from("disease-photos")
+          .upload(path, blob, { contentType: blob.type || "image/jpeg" });
+        if (!upErr) {
+          photoUrl = supabase.storage.from("disease-photos").getPublicUrl(path).data.publicUrl;
+        }
+      }
+      const summary = [
+        result.treatment?.immediate,
+        result.treatment?.estimatedRecoveryTime
+          ? `Recovery: ${result.treatment.estimatedRecoveryTime}`
+          : "",
+      ].filter(Boolean).join(" ");
+
+      const { data, error } = await supabase
+        .from("disease_cases")
+        .insert({
+          owner_id: guestId,
+          owner_name: getGuestName(),
+          crop: result.cropIdentification?.name || cropType || "Unknown crop",
+          disease: result.disease,
+          initial_severity: result.severity,
+          initial_confidence: result.confidence,
+          initial_photo_url: photoUrl,
+          initial_summary: summary,
+          initial_result: result as any,
+          status: "active",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      const next = new Date();
+      next.setDate(next.getDate() + 5);
+      await supabase.from("disease_followups").insert({
+        case_id: data.id,
+        owner_id: guestId,
+        scheduled_date: next.toISOString().slice(0, 10),
+        status: "scheduled",
+      });
+
+      setTrackedCaseId(data.id);
+      toast({ title: "Case tracked", description: "First check-in scheduled in 5 days." });
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Could not track case",
+        description: e instanceof Error ? e.message : "Try again",
+      });
+    } finally {
+      setTracking(false);
+    }
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -121,6 +188,7 @@ export default function DiseaseScanner() {
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResult(null);
+    setTrackedCaseId(null);
     try {
       const { data, error } = await supabase.functions.invoke("disease-detection", {
         body: { imageBase64: selectedImage || undefined, cropType: cropType || undefined, symptoms: symptoms || undefined, language: selectedLanguage },
@@ -233,6 +301,24 @@ export default function DiseaseScanner() {
 
               {result && (
                 <div className="space-y-4">
+                  <div className="p-3 rounded-xl bg-accent/5 border border-accent/20 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-2 text-sm">
+                      <Activity className="w-4 h-4 text-accent mt-0.5" />
+                      <div>
+                        <p className="font-medium text-foreground">Track this case over time</p>
+                        <p className="text-xs text-muted-foreground">Schedule check-ins and re-upload photos to monitor recovery.</p>
+                      </div>
+                    </div>
+                    {trackedCaseId ? (
+                      <Link to="/dashboard/followups">
+                        <Button size="sm" variant="outline">Open follow-ups</Button>
+                      </Link>
+                    ) : (
+                      <Button size="sm" onClick={trackCase} disabled={tracking}>
+                        {tracking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Track this case"}
+                      </Button>
+                    )}
+                  </div>
                   {result.cropIdentification && (
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                       <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
