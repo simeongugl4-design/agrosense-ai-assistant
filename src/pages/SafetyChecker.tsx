@@ -471,6 +471,12 @@ export default function SafetyChecker() {
           </div>
         </main>
       </div>
+      <SafetyChatbot
+        context={{
+          product, activeIngredient, dosage, crop, growthStage, applicationMethod,
+          waterSources, existingTreatments: existing, lastResult: result ?? undefined,
+        }}
+      />
     </div>
   );
 }
