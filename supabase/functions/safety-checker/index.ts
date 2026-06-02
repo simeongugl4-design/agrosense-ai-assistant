@@ -49,6 +49,12 @@ ${(waterSources || []).map((w: any) => `- ${w.type} at ${w.distanceMeters}m`).jo
 EXISTING TREATMENTS APPLIED RECENTLY:
 ${(existingTreatments || []).map((t: any) => `- ${t.product} (${t.activeIngredient || "?"}) applied ${t.daysAgo} days ago`).join("\n") || "- None"}
 
+In addition to the safety verdict, run a TANK-MIX COMPATIBILITY ANALYSIS:
+- Compare the planned product against each treatment applied in the last 30 days (above).
+- Detect chemical incompatibilities (e.g., alkaline + acidic, copper + sulfur, EC + WP precipitation, antagonism, phytotoxicity).
+- Detect timing/residual incompatibilities (carryover, wait intervals, resistance management).
+- Produce a safe MIXING PLAN with the correct fill order (W.A.L.E.S. or similar), jar-test guidance, water pH/hardness advice, and adjuvants.
+
 Return JSON:
 {
   "overallRisk": "low|moderate|high|critical",
@@ -68,6 +74,44 @@ Return JSON:
   "compatibility": [
     { "withProduct": "...", "status": "compatible|wait|incompatible", "waitDays": 0, "reason": "..." }
   ],
+  "tankMix": {
+    "overallVerdict": "safe|caution|do_not_mix",
+    "summary": "Plain-language verdict on mixing planned product with recent sprays.",
+    "incompatibilities": [
+      {
+        "withProduct": "Product from last 30 days",
+        "activeIngredient": "...",
+        "daysAgo": 5,
+        "type": "chemical|physical|biological|timing|resistance|phytotoxic",
+        "severity": "low|moderate|high|critical",
+        "reason": "Why they clash (e.g. copper precipitates with EC formulations).",
+        "mitigation": "What to do instead (skip mix, wait N days, split sprays, rinse tank).",
+        "minWaitDays": 0
+      }
+    ],
+    "doNotMixWith": ["Active ingredient or class to avoid"],
+    "safeMixingPlan": {
+      "canMixTogether": ["Product A", "Product B"],
+      "waterPh": "5.5-6.5",
+      "waterVolumePerTank": "e.g. 15L knapsack",
+      "fillOrderSteps": [
+        { "step": 1, "action": "Half-fill tank with clean water and start agitation", "product": "", "notes": "" },
+        { "step": 2, "action": "Add water conditioner / buffer if water is hard or alkaline", "product": "", "notes": "" },
+        { "step": 3, "action": "Add WG/WP/SP (wettable powders)", "product": "...", "notes": "" },
+        { "step": 4, "action": "Add SC/SE/OD (suspensions)", "product": "...", "notes": "" },
+        { "step": 5, "action": "Add EC/SL (liquids)", "product": "...", "notes": "" },
+        { "step": 6, "action": "Add adjuvants/surfactants last and top up water", "product": "...", "notes": "" }
+      ],
+      "jarTest": {
+        "required": true,
+        "instructions": "In a clean jar, mix products at the same proportion as the tank. Shake, wait 15 min. Reject if curdling, oil layer, sludge, or temperature change."
+      },
+      "adjuvants": [
+        { "name": "Non-ionic surfactant", "purpose": "Improve leaf coverage", "rate": "0.5 ml/L" }
+      ],
+      "sprayWithin": "Spray within 2 hours of mixing. Do not store mixed solution."
+    }
+  },
   "ppe": ["Gloves", "Mask", "Long sleeves"],
   "buffers": { "waterMeters": 30, "beehiveMeters": 50, "dwellingMeters": 20 },
   "preHarvestIntervalDays": 7,

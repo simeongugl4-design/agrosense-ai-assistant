@@ -7,14 +7,36 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   ShieldAlert, ShieldCheck, Loader2, Droplets, Plus, Trash2, AlertTriangle,
-  CheckCircle2, Clock, Beaker, Leaf, ListChecks,
+  CheckCircle2, Clock, Beaker, Leaf, ListChecks, FlaskConical, ArrowDown, XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { SafetyChatbot } from "@/components/safety/SafetyChatbot";
 
 interface WaterSource { type: string; distanceMeters: number; }
 interface ExistingTreatment { product: string; activeIngredient: string; daysAgo: number; }
+
+interface TankMixIncompat {
+  withProduct: string; activeIngredient: string; daysAgo: number;
+  type: string; severity: string; reason: string; mitigation: string; minWaitDays: number;
+}
+interface MixStep { step: number; action: string; product: string; notes: string }
+interface TankMix {
+  overallVerdict: "safe" | "caution" | "do_not_mix";
+  summary: string;
+  incompatibilities: TankMixIncompat[];
+  doNotMixWith: string[];
+  safeMixingPlan: {
+    canMixTogether: string[];
+    waterPh: string;
+    waterVolumePerTank: string;
+    fillOrderSteps: MixStep[];
+    jarTest: { required: boolean; instructions: string };
+    adjuvants: { name: string; purpose: string; rate: string }[];
+    sprayWithin: string;
+  };
+}
 
 interface SafetyResult {
   overallRisk: "low" | "moderate" | "high" | "critical";
@@ -24,6 +46,7 @@ interface SafetyResult {
   waterSourceWarnings: { source: string; distanceMeters: number; requiredBufferMeters: number; severity: string; message: string }[];
   restrictions: { type: string; title: string; detail: string; severity: string }[];
   compatibility: { withProduct: string; status: string; waitDays: number; reason: string }[];
+  tankMix?: TankMix;
   ppe: string[];
   buffers: { waterMeters: number; beehiveMeters: number; dwellingMeters: number };
   preHarvestIntervalDays: number;
@@ -31,6 +54,15 @@ interface SafetyResult {
   saferAlternatives: { name: string; type: string; reason: string }[];
   actionChecklist: string[];
 }
+
+const verdictStyle = (v: string) => {
+  switch (v) {
+    case "safe": return "bg-success/10 text-success border-success/30";
+    case "caution": return "bg-warning/10 text-warning border-warning/30";
+    case "do_not_mix": return "bg-destructive/10 text-destructive border-destructive/30";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
 
 const riskStyle = (r: string) => {
   switch (r) {
@@ -248,6 +280,138 @@ export default function SafetyChecker() {
                     </div>
                   )}
 
+                  {result.tankMix && (
+                    <div className={`p-4 rounded-xl border ${verdictStyle(result.tankMix.overallVerdict)}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold flex items-center gap-2">
+                          <FlaskConical className="w-4 h-4" /> Tank-mix analysis
+                        </h4>
+                        <Badge className="uppercase text-xs" variant="outline">
+                          {result.tankMix.overallVerdict.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm mb-3">{result.tankMix.summary}</p>
+
+                      {result.tankMix.incompatibilities?.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          <p className="text-xs font-semibold uppercase opacity-70">Incompatibilities found</p>
+                          {result.tankMix.incompatibilities.map((inc, i) => (
+                            <div key={i} className="p-3 rounded-lg bg-background border border-border">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    vs {inc.withProduct}
+                                    {inc.activeIngredient && <span className="text-xs text-muted-foreground"> ({inc.activeIngredient})</span>}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">{inc.daysAgo}d ago · {inc.type}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs capitalize">{inc.severity}</Badge>
+                              </div>
+                              <p className="text-xs mt-1.5"><span className="font-medium">Why:</span> {inc.reason}</p>
+                              <p className="text-xs mt-1"><span className="font-medium">Do this:</span> {inc.mitigation}</p>
+                              {inc.minWaitDays > 0 && (
+                                <p className="text-xs mt-1 text-warning"><Clock className="inline w-3 h-3 mr-1" />Wait at least {inc.minWaitDays} days before applying together.</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {result.tankMix.doNotMixWith?.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold uppercase opacity-70 mb-1">Never mix with</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {result.tankMix.doNotMixWith.map((d, i) => (
+                              <Badge key={i} variant="outline" className="text-xs border-destructive/40 text-destructive">
+                                <XCircle className="w-3 h-3 mr-1" />{d}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {result.tankMix.safeMixingPlan && result.tankMix.overallVerdict !== "do_not_mix" && (
+                        <div className="p-3 rounded-lg bg-background border border-border space-y-3">
+                          <p className="text-sm font-semibold flex items-center gap-2">
+                            <Droplets className="w-4 h-4 text-primary" /> Safe mixing plan
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="p-2 rounded bg-muted/40">
+                              <p className="text-muted-foreground">Water pH</p>
+                              <p className="font-semibold">{result.tankMix.safeMixingPlan.waterPh || "—"}</p>
+                            </div>
+                            <div className="p-2 rounded bg-muted/40">
+                              <p className="text-muted-foreground">Tank volume</p>
+                              <p className="font-semibold">{result.tankMix.safeMixingPlan.waterVolumePerTank || "—"}</p>
+                            </div>
+                          </div>
+
+                          {result.tankMix.safeMixingPlan.canMixTogether?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-1">Products to combine:</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {result.tankMix.safeMixingPlan.canMixTogether.map((p, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{p}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {result.tankMix.safeMixingPlan.fillOrderSteps?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-2">Fill order:</p>
+                              <ol className="space-y-1.5">
+                                {result.tankMix.safeMixingPlan.fillOrderSteps.map((s, i) => (
+                                  <li key={i} className="flex gap-2 text-xs">
+                                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-[10px]">
+                                      {s.step}
+                                    </span>
+                                    <div className="flex-1">
+                                      <p>{s.action}{s.product && <span className="font-medium"> — {s.product}</span>}</p>
+                                      {s.notes && <p className="text-muted-foreground italic">{s.notes}</p>}
+                                    </div>
+                                    {i < result.tankMix!.safeMixingPlan.fillOrderSteps.length - 1 && (
+                                      <ArrowDown className="w-3 h-3 text-muted-foreground self-end" />
+                                    )}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+
+                          {result.tankMix.safeMixingPlan.jarTest?.required && (
+                            <div className="p-2 rounded bg-warning/5 border border-warning/30 text-xs">
+                              <p className="font-medium flex items-center gap-1"><FlaskConical className="w-3 h-3" /> Jar test required first</p>
+                              <p className="text-muted-foreground mt-0.5">{result.tankMix.safeMixingPlan.jarTest.instructions}</p>
+                            </div>
+                          )}
+
+                          {result.tankMix.safeMixingPlan.adjuvants?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-1">Adjuvants:</p>
+                              <div className="space-y-1">
+                                {result.tankMix.safeMixingPlan.adjuvants.map((a, i) => (
+                                  <div key={i} className="text-xs flex justify-between gap-2 p-1.5 rounded bg-muted/30">
+                                    <span><span className="font-medium">{a.name}</span> — {a.purpose}</span>
+                                    <span className="text-muted-foreground">{a.rate}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {result.tankMix.safeMixingPlan.sprayWithin && (
+                            <p className="text-xs text-muted-foreground italic flex items-center gap-1">
+                              <Clock className="w-3 h-3" />{result.tankMix.safeMixingPlan.sprayWithin}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 rounded-xl bg-muted/40 border border-border">
                       <p className="text-xs text-muted-foreground">Pre-harvest interval</p>
@@ -307,6 +471,12 @@ export default function SafetyChecker() {
           </div>
         </main>
       </div>
+      <SafetyChatbot
+        context={{
+          product, activeIngredient, dosage, crop, growthStage, applicationMethod,
+          waterSources, existingTreatments: existing, lastResult: result ?? undefined,
+        }}
+      />
     </div>
   );
 }
