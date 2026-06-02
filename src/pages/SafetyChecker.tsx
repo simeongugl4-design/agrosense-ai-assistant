@@ -7,14 +7,36 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   ShieldAlert, ShieldCheck, Loader2, Droplets, Plus, Trash2, AlertTriangle,
-  CheckCircle2, Clock, Beaker, Leaf, ListChecks,
+  CheckCircle2, Clock, Beaker, Leaf, ListChecks, FlaskConical, ArrowDown, XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { SafetyChatbot } from "@/components/safety/SafetyChatbot";
 
 interface WaterSource { type: string; distanceMeters: number; }
 interface ExistingTreatment { product: string; activeIngredient: string; daysAgo: number; }
+
+interface TankMixIncompat {
+  withProduct: string; activeIngredient: string; daysAgo: number;
+  type: string; severity: string; reason: string; mitigation: string; minWaitDays: number;
+}
+interface MixStep { step: number; action: string; product: string; notes: string }
+interface TankMix {
+  overallVerdict: "safe" | "caution" | "do_not_mix";
+  summary: string;
+  incompatibilities: TankMixIncompat[];
+  doNotMixWith: string[];
+  safeMixingPlan: {
+    canMixTogether: string[];
+    waterPh: string;
+    waterVolumePerTank: string;
+    fillOrderSteps: MixStep[];
+    jarTest: { required: boolean; instructions: string };
+    adjuvants: { name: string; purpose: string; rate: string }[];
+    sprayWithin: string;
+  };
+}
 
 interface SafetyResult {
   overallRisk: "low" | "moderate" | "high" | "critical";
@@ -24,6 +46,7 @@ interface SafetyResult {
   waterSourceWarnings: { source: string; distanceMeters: number; requiredBufferMeters: number; severity: string; message: string }[];
   restrictions: { type: string; title: string; detail: string; severity: string }[];
   compatibility: { withProduct: string; status: string; waitDays: number; reason: string }[];
+  tankMix?: TankMix;
   ppe: string[];
   buffers: { waterMeters: number; beehiveMeters: number; dwellingMeters: number };
   preHarvestIntervalDays: number;
@@ -31,6 +54,15 @@ interface SafetyResult {
   saferAlternatives: { name: string; type: string; reason: string }[];
   actionChecklist: string[];
 }
+
+const verdictStyle = (v: string) => {
+  switch (v) {
+    case "safe": return "bg-success/10 text-success border-success/30";
+    case "caution": return "bg-warning/10 text-warning border-warning/30";
+    case "do_not_mix": return "bg-destructive/10 text-destructive border-destructive/30";
+    default: return "bg-muted text-muted-foreground";
+  }
+};
 
 const riskStyle = (r: string) => {
   switch (r) {
