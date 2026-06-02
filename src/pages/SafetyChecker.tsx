@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SafetyChatbot } from "@/components/safety/SafetyChatbot";
+import { downloadSafetyPdf } from "@/lib/safety-pdf";
+import { Download } from "lucide-react";
 
 interface WaterSource { type: string; distanceMeters: number; }
 interface ExistingTreatment { product: string; activeIngredient: string; daysAgo: number; }
@@ -197,9 +199,29 @@ export default function SafetyChecker() {
 
             {/* RESULT */}
             <div className="bg-card rounded-xl border border-border p-6 overflow-y-auto max-h-[85vh]">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-warning" /> Safety report
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-warning" /> Safety report
+                </h3>
+                {result && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      downloadSafetyPdf({
+                        inputs: {
+                          product, activeIngredient, dosage, crop, growthStage, applicationMethod,
+                          waterSources, existingTreatments: existing,
+                        },
+                        result,
+                      })
+                    }
+                  >
+                    <Download className="w-4 h-4 mr-2" />Download PDF
+                  </Button>
+                )}
+              </div>
+
 
               {!result && !loading && (
                 <div className="flex flex-col items-center justify-center h-48 text-center">
