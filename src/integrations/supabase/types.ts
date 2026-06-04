@@ -451,6 +451,72 @@ export type Database = {
         }
         Relationships: []
       }
+      safety_plans: {
+        Row: {
+          active_ingredient: string | null
+          application_method: string | null
+          created_at: string
+          crop: string | null
+          dosage: string | null
+          growth_stage: string | null
+          id: string
+          inputs: Json
+          overall_risk: string | null
+          owner_id: string
+          owner_name: string
+          product: string
+          product_key: string
+          result: Json
+          safe_to_proceed: boolean | null
+          summary: string | null
+          tank_mix_verdict: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          active_ingredient?: string | null
+          application_method?: string | null
+          created_at?: string
+          crop?: string | null
+          dosage?: string | null
+          growth_stage?: string | null
+          id?: string
+          inputs: Json
+          overall_risk?: string | null
+          owner_id: string
+          owner_name?: string
+          product: string
+          product_key: string
+          result: Json
+          safe_to_proceed?: boolean | null
+          summary?: string | null
+          tank_mix_verdict?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          active_ingredient?: string | null
+          application_method?: string | null
+          created_at?: string
+          crop?: string | null
+          dosage?: string | null
+          growth_stage?: string | null
+          id?: string
+          inputs?: Json
+          overall_risk?: string | null
+          owner_id?: string
+          owner_name?: string
+          product?: string
+          product_key?: string
+          result?: Json
+          safe_to_proceed?: boolean | null
+          summary?: string | null
+          tank_mix_verdict?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

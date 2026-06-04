@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Leaf, LayoutDashboard, Sprout, Cloud, Camera, Droplets, FlaskConical, MessageCircle,
   Settings, HelpCircle, LogOut, Menu, X, Crown, Calendar, ShoppingCart, TestTubes,
-  Users, Home, ShieldCheck, Activity,
+  Users, Home, ShieldCheck, Activity, History,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ export function Sidebar() {
         { icon: FlaskConical, label: copy.sidebar.fertilizer, path: "/dashboard/fertilizer" },
         { icon: MessageCircle, label: copy.sidebar.aiAssistant, path: "/dashboard/assistant" },
         { icon: ShieldCheck, label: "Safety Checker", path: "/dashboard/safety" },
+        { icon: History, label: "Safety Records", path: "/dashboard/safety-records" },
         { icon: Activity, label: "Disease Follow-ups", path: "/dashboard/followups" },
       ],
     },

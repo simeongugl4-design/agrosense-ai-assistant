@@ -14,7 +14,9 @@ import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SafetyChatbot } from "@/components/safety/SafetyChatbot";
 import { downloadSafetyPdf } from "@/lib/safety-pdf";
-import { Download } from "lucide-react";
+import { Download, History } from "lucide-react";
+import { getGuestId, getGuestName } from "@/lib/guest-id";
+import { Link } from "react-router-dom";
 
 interface WaterSource { type: string; distanceMeters: number; }
 interface ExistingTreatment { product: string; activeIngredient: string; daysAgo: number; }
@@ -204,21 +206,49 @@ export default function SafetyChecker() {
                   <ShieldAlert className="w-5 h-5 text-warning" /> Safety report
                 </h3>
                 {result && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      downloadSafetyPdf({
-                        inputs: {
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to="/dashboard/safety-records"><History className="w-4 h-4 mr-1.5" />Records</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        const inputs = {
                           product, activeIngredient, dosage, crop, growthStage, applicationMethod,
                           waterSources, existingTreatments: existing,
-                        },
-                        result,
-                      })
-                    }
-                  >
-                    <Download className="w-4 h-4 mr-2" />Download PDF
-                  </Button>
+                        };
+                        downloadSafetyPdf({ inputs, result });
+                        try {
+                          const owner = getGuestId();
+                          const product_key = (product || "untitled").trim().toLowerCase();
+                          const { error } = await (supabase as any).from("safety_plans").insert({
+                            owner_id: owner,
+                            owner_name: getGuestName(),
+                            product: product || "Untitled",
+                            product_key,
+                            active_ingredient: activeIngredient || null,
+                            dosage: dosage || null,
+                            crop: crop || null,
+                            growth_stage: growthStage || null,
+                            application_method: applicationMethod || null,
+                            overall_risk: result.overallRisk,
+                            safe_to_proceed: result.safeToProceed,
+                            tank_mix_verdict: result.tankMix?.overallVerdict || null,
+                            summary: result.summary,
+                            inputs,
+                            result,
+                          });
+                          if (error) throw error;
+                          toast({ title: "Saved to records", description: "View it anytime in Safety Records." });
+                        } catch (e) {
+                          toast({ variant: "destructive", title: "Saved PDF, not record", description: e instanceof Error ? e.message : "Try again" });
+                        }
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" />Download & Save
+                    </Button>
+                  </div>
                 )}
               </div>
 
