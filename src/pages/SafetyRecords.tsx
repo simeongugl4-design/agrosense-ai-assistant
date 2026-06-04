@@ -115,7 +115,7 @@ export default function SafetyRecords() {
               <Button
                 size="sm"
                 disabled={compareIds.length !== 2}
-                onClick={() => setShowCompare(true)}
+                onClick={() => navigate(`/dashboard/safety-records/compare?ids=${compareIds.join(",")}`)}
               >
                 <GitCompare className="w-4 h-4 mr-2" /> Compare versions
               </Button>
