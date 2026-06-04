@@ -96,7 +96,7 @@ export default function SafetyRecords() {
     downloadSafetyPdf({ inputs: r.inputs, result: r.result });
   };
 
-  const compareSelected = rows.filter((r) => compareIds.includes(r.id));
+  
 
   return (
     <div className="min-h-screen bg-background">
