@@ -14,7 +14,9 @@ import { toast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SafetyChatbot } from "@/components/safety/SafetyChatbot";
 import { downloadSafetyPdf } from "@/lib/safety-pdf";
-import { Download } from "lucide-react";
+import { Download, History } from "lucide-react";
+import { getGuestId, getGuestName } from "@/lib/guest-id";
+import { Link } from "react-router-dom";
 
 interface WaterSource { type: string; distanceMeters: number; }
 interface ExistingTreatment { product: string; activeIngredient: string; daysAgo: number; }
