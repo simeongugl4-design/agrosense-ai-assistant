@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
 import {
   ShieldCheck, Download, FileText, History, GitCompare, Trash2, Loader2, ChevronRight,
 } from "lucide-react";
@@ -41,11 +39,11 @@ const riskClass = (r: string | null) => {
 };
 
 export default function SafetyRecords() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<PlanRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [showCompare, setShowCompare] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -98,7 +96,7 @@ export default function SafetyRecords() {
     downloadSafetyPdf({ inputs: r.inputs, result: r.result });
   };
 
-  const compareSelected = rows.filter((r) => compareIds.includes(r.id));
+  
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,7 +115,7 @@ export default function SafetyRecords() {
               <Button
                 size="sm"
                 disabled={compareIds.length !== 2}
-                onClick={() => setShowCompare(true)}
+                onClick={() => navigate(`/dashboard/safety-records/compare?ids=${compareIds.join(",")}`)}
               >
                 <GitCompare className="w-4 h-4 mr-2" /> Compare versions
               </Button>
@@ -206,52 +204,6 @@ export default function SafetyRecords() {
           </div>
         </main>
       </div>
-
-      <Dialog open={showCompare} onOpenChange={setShowCompare}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Compare versions</DialogTitle>
-            <DialogDescription>Side-by-side snapshot of two safety plans.</DialogDescription>
-          </DialogHeader>
-          {compareSelected.length === 2 && (
-            <div className="grid grid-cols-2 gap-4">
-              {compareSelected
-                .sort((a, b) => a.version - b.version)
-                .map((r) => (
-                  <div key={r.id} className="border border-border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">v{r.version}</span>
-                      <Badge className={`uppercase text-[10px] ${riskClass(r.overall_risk)}`}>{r.overall_risk}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
-                    <div className="text-xs space-y-1">
-                      <p><b>Product:</b> {r.product}</p>
-                      <p><b>Dosage:</b> {r.dosage || "—"}</p>
-                      <p><b>Crop / Stage:</b> {r.crop || "—"} / {r.inputs?.growthStage || "—"}</p>
-                      <p><b>Tank-mix:</b> {r.tank_mix_verdict || "—"}</p>
-                      <p><b>Safe to proceed:</b> {r.safe_to_proceed ? "Yes" : "No"}</p>
-                    </div>
-                    <div className="text-xs">
-                      <p className="font-semibold mt-2">Summary</p>
-                      <p className="text-muted-foreground">{r.summary}</p>
-                    </div>
-                    {r.result?.actionChecklist?.length > 0 && (
-                      <div className="text-xs">
-                        <p className="font-semibold mt-2">Actions</p>
-                        <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                          {r.result.actionChecklist.slice(0, 5).map((s: string, i: number) => <li key={i}>{s}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => redownload(r)}>
-                      <Download className="w-3.5 h-3.5 mr-1.5" /> Download PDF
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
