@@ -26,6 +26,14 @@ import SafetyChecker from "./pages/SafetyChecker";
 import DiseaseFollowups from "./pages/DiseaseFollowups";
 import SafetyRecords from "./pages/SafetyRecords";
 import SafetyCompare from "./pages/SafetyCompare";
+import PestDetection from "./pages/PestDetection";
+import SatelliteMonitoring from "./pages/SatelliteMonitoring";
+import YieldPrediction from "./pages/YieldPrediction";
+import LivestockMonitoring from "./pages/LivestockMonitoring";
+import FarmFinance from "./pages/FarmFinance";
+import CarbonCredits from "./pages/CarbonCredits";
+import Subsidies from "./pages/Subsidies";
+import AlertEngine from "./pages/AlertEngine";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +66,14 @@ const App = () => (
               <Route path="/dashboard/followups" element={<DiseaseFollowups />} />
               <Route path="/dashboard/safety-records" element={<SafetyRecords />} />
               <Route path="/dashboard/safety-records/compare" element={<SafetyCompare />} />
+              <Route path="/dashboard/pests" element={<PestDetection />} />
+              <Route path="/dashboard/satellite" element={<SatelliteMonitoring />} />
+              <Route path="/dashboard/yield" element={<YieldPrediction />} />
+              <Route path="/dashboard/livestock" element={<LivestockMonitoring />} />
+              <Route path="/dashboard/finance" element={<FarmFinance />} />
+              <Route path="/dashboard/carbon" element={<CarbonCredits />} />
+              <Route path="/dashboard/subsidies" element={<Subsidies />} />
+              <Route path="/dashboard/alerts" element={<AlertEngine />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
