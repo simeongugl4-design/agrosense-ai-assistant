@@ -2,7 +2,8 @@ import { useState } from "react";
 import {
   Leaf, LayoutDashboard, Sprout, Cloud, Camera, Droplets, FlaskConical, MessageCircle,
   Settings, HelpCircle, LogOut, Menu, X, Crown, Calendar, ShoppingCart, TestTubes,
-  Users, Home, ShieldCheck, Activity, History,
+  Users, Home, ShieldCheck, Activity, History, Bug, Satellite, TrendingUp, Beef,
+  Banknote, Landmark, Bell,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,19 @@ export function Sidebar() {
         { icon: ShieldCheck, label: "Safety Checker", path: "/dashboard/safety" },
         { icon: History, label: "Safety Records", path: "/dashboard/safety-records" },
         { icon: Activity, label: "Disease Follow-ups", path: "/dashboard/followups" },
+        { icon: Bug, label: "Pest Detection", path: "/dashboard/pests" },
+        { icon: Satellite, label: "Satellite Monitoring", path: "/dashboard/satellite" },
+        { icon: TrendingUp, label: "Yield Prediction", path: "/dashboard/yield" },
+        { icon: Beef, label: "Livestock", path: "/dashboard/livestock" },
+      ],
+    },
+    {
+      label: "Business",
+      items: [
+        { icon: Banknote, label: "Farm Finance", path: "/dashboard/finance" },
+        { icon: Leaf, label: "Carbon Credits", path: "/dashboard/carbon" },
+        { icon: Landmark, label: "Subsidies & Grants", path: "/dashboard/subsidies" },
+        { icon: Bell, label: "Alert Engine", path: "/dashboard/alerts" },
       ],
     },
     {
