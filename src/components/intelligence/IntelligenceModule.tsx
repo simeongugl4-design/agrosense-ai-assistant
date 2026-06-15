@@ -38,7 +38,7 @@ export function IntelligenceModule({
     setResult(null);
     try {
       const { data, error } = await supabase.functions.invoke("farm-intelligence", {
-        body: { module, context: getContext(), language: selectedLanguage?.name || "English" },
+        body: { module, context: getContext(), language: selectedLanguage || "English" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -58,7 +58,7 @@ export function IntelligenceModule({
     <div className="min-h-screen bg-background">
       <Sidebar />
       <div className="lg:ml-64">
-        <Header />
+        <Header title={title} subtitle={description} />
         <main className="p-4 lg:p-8 max-w-6xl mx-auto space-y-6">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
