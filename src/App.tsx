@@ -34,6 +34,7 @@ import FarmFinance from "./pages/FarmFinance";
 import CarbonCredits from "./pages/CarbonCredits";
 import Subsidies from "./pages/Subsidies";
 import AlertEngine from "./pages/AlertEngine";
+import { GlobalChatbot } from "./components/GlobalChatbot";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <GlobalChatbot />
           </BrowserRouter>
         </LanguageProvider>
       </AuthProvider>
