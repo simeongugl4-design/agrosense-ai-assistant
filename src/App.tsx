@@ -34,6 +34,7 @@ import FarmFinance from "./pages/FarmFinance";
 import CarbonCredits from "./pages/CarbonCredits";
 import Subsidies from "./pages/Subsidies";
 import AlertEngine from "./pages/AlertEngine";
+import { GlobalChatbot } from "./components/GlobalChatbot";
 
 const queryClient = new QueryClient();
 
